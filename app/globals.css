@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f5f6fa;
+  --ink: #131722;
+  --muted: #5d6475;
+  --line: #e1e4ee;
+  --accent: #4b5bd7;
+  --accent-soft: #e8ebfa;
+  --card: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1220;
+    --ink: #eef0f8;
+    --muted: #9aa1b8;
+    --line: #262b42;
+    --accent: #8b97ff;
+    --accent-soft: #1d2243;
+    --card: #161a2e;
+  }
+}
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.55;
+}
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  padding: .65rem 1.1rem; border-radius: .75rem; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink);
+}
+.btn:hover { border-color: var(--accent); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover { filter: brightness(1.08); }
+.field {
+  width: 100%; padding: .7rem .9rem; border-radius: .75rem;
+  border: 1px solid var(--line); background: var(--card); color: var(--ink);
+}
+.field:focus, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 1rem; padding: 1.5rem; }
