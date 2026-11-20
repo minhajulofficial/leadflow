@@ -1,0 +1,12 @@
+import assert from "node:assert/strict";
+import { validatePayment, paymentError } from "../lib/billing";
+import { effectivePlan } from "../lib/plan";
+assert.equal(validatePayment("01712345678", "8N7A6D5C4B"), null);
+assert.equal(validatePayment("+880 1712-345678", "abc12345"), null);
+assert.ok(validatePayment("12345", "abc12345")); assert.ok(validatePayment("01712345678", "12")); assert.ok(validatePayment("01712345678", "ab cd ef gh"));
+assert.match(paymentError("duplicate key", "23505"), /already submitted/);
+assert.match(paymentError("TOO_MANY_PENDING"), /3 payments/);
+const past = new Date(Date.now() - 864e5).toISOString(), future = new Date(Date.now() + 864e5).toISOString();
+assert.equal(effectivePlan("pro", past), "free"); assert.equal(effectivePlan("pro", future), "pro");
+assert.equal(effectivePlan("pro", null), "pro"); assert.equal(effectivePlan("free", past), "free"); assert.equal(effectivePlan(null, null), "free");
+console.log("billing/plan logic tests passed");

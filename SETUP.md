@@ -18,3 +18,12 @@ Never put the Supabase service_role key in the frontend or share it in chat.
 - Admin > Payment methods: set your real bKash/Nagad number and tick Active.
 - Lost authenticator? Supabase dashboard > Authentication > Users > your user > remove the MFA factor, then enrol again.
 - Database security tests (real Postgres engine, no Supabase needed): `npm i -D @electric-sql/pglite && node tests/db-security.test.mjs`
+
+## Phase 4 (auto lead collection)
+1. Supabase SQL Editor: run `supabase/migrations/0004_collect.sql`.
+2. Make an encryption key (it protects users' API keys). In your browser press F12 > Console, paste this and copy the result:
+   `btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))))`
+3. Cloudflare > Workers & Pages > leadflow > Settings > Variables and Secrets > Add. Type = **Secret**, name = `ENCRYPTION_KEY`, value = the text from step 2. Save it somewhere safe too: if you lose it, users must re-enter their API keys.
+4. Admin > Collect settings: switch providers on, manage directories, countries and cities.
+5. Each user: Integrations > paste their own Apify API token, then Collect leads.
+- Run all tests: `npm test`

@@ -8,6 +8,7 @@ export default function AdminNav() {
         <Link href="/admin" className="btn">Overview</Link>
         <Link href="/admin/payments" className="btn">Payments</Link>
         <Link href="/admin/methods" className="btn">Payment methods</Link>
+        <Link href="/admin/collect" className="btn">Collect settings</Link>
         <Link href="/dashboard" className="btn">Back to app</Link>
       </nav>
     </header>

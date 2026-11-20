@@ -28,6 +28,8 @@ export default async function Dashboard() {
         </p>
         <div className="mt-6 flex gap-3">
           <Link href="/dashboard/leads" className="btn btn-primary">Open leads</Link>
+          <Link href="/dashboard/collect" className="btn">Collect leads</Link>
+          <Link href="/dashboard/integrations" className="btn">Integrations</Link>
           <Link href="/dashboard/billing" className="btn">Plan &amp; billing</Link>
         </div>
       </section>
