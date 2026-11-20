@@ -10,7 +10,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   if (!user) redirect("/login");
 
   const { data: profile } = await supabase
-    .from("profiles").select("full_name, email, role, plan, plan_expires_at").eq("id", user.id).single();
+    .from("profiles").select("full_name, email, role, plan").eq("id", user.id).maybeSingle();
+  const { data: exp } = await supabase.from("profiles").select("plan_expires_at").eq("id", user.id).maybeSingle();
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-8">
@@ -25,25 +26,26 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       {!profile && (
         <section className="mt-6 panel" role="alert" style={{ borderColor: "#d64545" }}>
           <p className="font-bold">Your profile was not found.</p>
-          <p className="mt-1 text-sm">This happens if you signed up before the database setup was run. In Supabase &gt; SQL Editor run the repair SQL (file <code>0005_backfill_profiles.sql</code>), then refresh this page.</p>
+          <p className="mt-1 text-sm">This happens if you signed up before the database setup was run. In Supabase &gt; SQL Editor run the repair SQL (file <code>0005_backfill_profiles.sql</code>), then refresh this page. Not sure what is missing? Open <Link href="/dashboard/status" className="underline">Setup status</Link>.</p>
         </section>
       )}
       {profile && notice === "not-admin" && profile.role !== "admin" && (
         <section className="mt-6 panel" role="alert" style={{ borderColor: "#d64545" }}>
           <p className="font-bold">This account is not an admin yet.</p>
-          <p className="mt-1 text-sm">In Supabase &gt; SQL Editor run this, then open /admin again:</p>
+          <p className="mt-1 text-sm">In Supabase &gt; SQL Editor run this, then open /admin again (or check <Link href="/dashboard/status" className="underline">Setup status</Link>):</p>
           <pre className="mt-2 overflow-x-auto rounded-lg p-3 text-xs" style={{ background: "var(--accent-soft)" }}>{`update public.profiles set role='admin' where email='${user.email}';`}</pre>
         </section>
       )}
       <section className="mt-10 panel">
         <h1 className="text-2xl font-bold">Hi {profile?.full_name ?? profile?.email ?? "there"}</h1>
         <p className="mt-1" style={{ color: "var(--muted)" }}>
-          You are on the <strong>{effectivePlan(profile?.plan, profile?.plan_expires_at)}</strong> plan.
+          You are on the <strong>{effectivePlan(profile?.plan, exp?.plan_expires_at)}</strong> plan.
         </p>
         <div className="mt-6 flex gap-3">
           <Link href="/dashboard/leads" className="btn btn-primary">Open leads</Link>
           <Link href="/dashboard/collect" className="btn">Collect leads</Link>
           <Link href="/dashboard/integrations" className="btn">Integrations</Link>
+          <Link href="/dashboard/status" className="btn">Setup status</Link>
           <Link href="/dashboard/billing" className="btn">Plan &amp; billing</Link>
         </div>
       </section>
