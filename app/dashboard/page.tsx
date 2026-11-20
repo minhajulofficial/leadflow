@@ -25,9 +25,9 @@ export default async function Dashboard() {
         <p className="mt-1" style={{ color: "var(--muted)" }}>
           You are on the <strong>{profile?.plan ?? "free"}</strong> plan.
         </p>
-        <p className="mt-6" style={{ color: "var(--muted)" }}>
-          Your lead tools will appear here as we build the next phases.
-        </p>
+        <div className="mt-6 flex gap-3">
+          <Link href="/dashboard/leads" className="btn btn-primary">Open leads</Link>
+        </div>
       </section>
     </main>
   );
