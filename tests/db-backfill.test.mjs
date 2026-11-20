@@ -1,0 +1,27 @@
+import { PGlite } from "@electric-sql/pglite";
+import fs from "node:fs"; import assert from "node:assert/strict";
+const db = new PGlite(); const dir = "./supabase/migrations/";
+await db.exec(`
+ create role anon nologin; create role authenticated nologin; create schema auth;
+ create table auth.users (id uuid primary key default gen_random_uuid(), email text, raw_user_meta_data jsonb);
+ create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claims', true)::jsonb->>'sub','')::uuid $$;
+ create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims', true),''),'{}')::jsonb $$;
+ grant usage on schema auth, public to authenticated, anon;
+ alter default privileges in schema public grant all on tables to anon, authenticated;
+ alter default privileges in schema public grant all on functions to anon, authenticated;
+ insert into auth.users(email, raw_user_meta_data) values ('early@x.com', '{"full_name":"Early Bird"}');`);
+const files = fs.readdirSync(dir).sort();
+for (const f of files.filter((f) => !f.startsWith("0005"))) await db.exec(fs.readFileSync(dir + f, "utf8"));
+assert.equal((await db.query(`select count(*)::int c from profiles`)).rows[0].c, 0);
+console.log("ok user who signed up before the SQL has NO profile (the bug)");
+await db.exec(`update profiles set role='admin' where email='early@x.com'`);
+assert.equal((await db.query(`select count(*)::int c from profiles where role='admin'`)).rows[0].c, 0);
+console.log("ok making them admin silently changes nothing (why admin never worked)");
+const fix = fs.readFileSync(dir + files.find((f) => f.startsWith("0005")), "utf8");
+await db.exec(fix); await db.exec(fix);
+const p = (await db.query(`select email, full_name, role, plan from profiles`)).rows;
+assert.deepEqual(p, [{ email: "early@x.com", full_name: "Early Bird", role: "user", plan: "free" }]);
+console.log("ok backfill creates the profile (and is safe to run twice)");
+await db.exec(`update profiles set role='admin' where email='early@x.com'`);
+assert.equal((await db.query(`select role from profiles`)).rows[0].role, "admin");
+console.log("ok now the admin SQL works\n\nBACKFILL TEST PASSED");

@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { effectivePlan } from "@/lib/plan";
 
-export default async function Dashboard() {
+export default async function Dashboard({ searchParams }: { searchParams: Promise<{ notice?: string }> }) {
+  const { notice } = await searchParams;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
@@ -21,6 +22,19 @@ export default async function Dashboard() {
         </div>
       </header>
 
+      {!profile && (
+        <section className="mt-6 panel" role="alert" style={{ borderColor: "#d64545" }}>
+          <p className="font-bold">Your profile was not found.</p>
+          <p className="mt-1 text-sm">This happens if you signed up before the database setup was run. In Supabase &gt; SQL Editor run the repair SQL (file <code>0005_backfill_profiles.sql</code>), then refresh this page.</p>
+        </section>
+      )}
+      {profile && notice === "not-admin" && profile.role !== "admin" && (
+        <section className="mt-6 panel" role="alert" style={{ borderColor: "#d64545" }}>
+          <p className="font-bold">This account is not an admin yet.</p>
+          <p className="mt-1 text-sm">In Supabase &gt; SQL Editor run this, then open /admin again:</p>
+          <pre className="mt-2 overflow-x-auto rounded-lg p-3 text-xs" style={{ background: "var(--accent-soft)" }}>{`update public.profiles set role='admin' where email='${user.email}';`}</pre>
+        </section>
+      )}
       <section className="mt-10 panel">
         <h1 className="text-2xl font-bold">Hi {profile?.full_name ?? profile?.email ?? "there"}</h1>
         <p className="mt-1" style={{ color: "var(--muted)" }}>
