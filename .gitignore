@@ -1,6 +1,7 @@
 node_modules
 .env*
 !.env.example
+!.env.production
 .next
 next-env.d.ts
 /dist/
