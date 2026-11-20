@@ -19,6 +19,9 @@ Never put the Supabase service_role key in the frontend or share it in chat.
 - Lost authenticator? Supabase dashboard > Authentication > Users > your user > remove the MFA factor, then enrol again.
 - Database security tests (real Postgres engine, no Supabase needed): `npm i -D @electric-sql/pglite && node tests/db-security.test.mjs`
 
+## Fix: "profile not found" even though the profile exists
+Run `leadflow-fix-permissions.sql` (0006). Newer Supabase projects do not auto-grant table access to the website.
+
 ## Fix: admin page not opening
 Run `leadflow-fix-admin.sql` (creates missing profiles + makes you admin). Then open /admin and scan the MFA QR.
 

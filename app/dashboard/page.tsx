@@ -9,7 +9,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from("profiles").select("full_name, email, role, plan").eq("id", user.id).maybeSingle();
   const { data: exp } = await supabase.from("profiles").select("plan_expires_at").eq("id", user.id).maybeSingle();
 
@@ -25,7 +25,11 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
       {!profile && (
         <section className="mt-6 panel" role="alert" style={{ borderColor: "#d64545" }}>
-          <p className="font-bold">Your profile was not found.</p>
+          <p className="font-bold">Your profile could not be loaded.</p>
+          {profileError && (
+            <p className="mt-1 text-sm"><strong>Reason:</strong> {profileError.message}
+              {/permission denied/i.test(profileError.message) && <> This means the database has not given the website permission to read its tables. Run <code>0006_grants.sql</code> in Supabase &gt; SQL Editor.</>}</p>
+          )}
           <p className="mt-1 text-sm">This happens if you signed up before the database setup was run. In Supabase &gt; SQL Editor run the repair SQL (file <code>0005_backfill_profiles.sql</code>), then refresh this page. Not sure what is missing? Open <Link href="/dashboard/status" className="underline">Setup status</Link>.</p>
         </section>
       )}

@@ -7,8 +7,7 @@ await db.exec(`
  create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claims', true)::jsonb->>'sub','')::uuid $$;
  create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims', true),''),'{}')::jsonb $$;
  grant usage on schema auth, public to authenticated, anon;
- alter default privileges in schema public grant all on tables to anon, authenticated;
- alter default privileges in schema public grant all on functions to anon, authenticated;
+ ${process.env.NO_DEFAULT_GRANTS ? "" : "alter default privileges in schema public grant all on tables to anon, authenticated; alter default privileges in schema public grant all on functions to anon, authenticated;"}
  insert into auth.users(email, raw_user_meta_data) values ('early@x.com', '{"full_name":"Early Bird"}');`);
 const files = fs.readdirSync(dir).sort();
 for (const f of files.filter((f) => !f.startsWith("0005"))) await db.exec(fs.readFileSync(dir + f, "utf8"));

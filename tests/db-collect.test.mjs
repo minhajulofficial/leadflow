@@ -8,9 +8,8 @@ await db.exec(`
  create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claims', true)::jsonb->>'sub','')::uuid $$;
  create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims', true),''),'{}')::jsonb $$;
  grant usage on schema auth, public to authenticated, anon;
- alter default privileges in schema public grant all on tables to anon, authenticated;
- alter default privileges in schema public grant all on functions to anon, authenticated;`);
-for (const f of fs.readdirSync(dir).sort()) await db.exec(fs.readFileSync(dir + f, "utf8"));
+ ${process.env.NO_DEFAULT_GRANTS ? "" : "alter default privileges in schema public grant all on tables to anon, authenticated; alter default privileges in schema public grant all on functions to anon, authenticated;"}`);
+for (const f of fs.readdirSync(dir).sort().filter((f) => !(process.env.SKIP_MIGRATION && f.startsWith(process.env.SKIP_MIGRATION)))) await db.exec(fs.readFileSync(dir + f, "utf8"));
 const mk = async (e) => (await db.query(`insert into auth.users(email) values ('${e}') returning id`)).rows[0].id;
 const A = await mk("a@x.com"), C = await mk("c@x.com"), ADM = await mk("admin@x.com");
 await db.exec(`update public.profiles set role='admin' where email='admin@x.com'`);

@@ -10,10 +10,9 @@ await db.exec(`
  create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claims', true),''),'{}')::jsonb $$;
  grant usage on schema auth to authenticated, anon;
  grant usage on schema public to authenticated, anon;
- alter default privileges in schema public grant all on tables to anon, authenticated;
- alter default privileges in schema public grant all on functions to anon, authenticated;
+ ${process.env.NO_DEFAULT_GRANTS ? "" : "alter default privileges in schema public grant all on tables to anon, authenticated; alter default privileges in schema public grant all on functions to anon, authenticated;"}
 `);
-for (const f of fs.readdirSync(dir).sort()) await db.exec(fs.readFileSync(dir + f, "utf8"));
+for (const f of fs.readdirSync(dir).sort().filter((f) => !(process.env.SKIP_MIGRATION && f.startsWith(process.env.SKIP_MIGRATION)))) await db.exec(fs.readFileSync(dir + f, "utf8"));
 const A = (await db.query(`insert into auth.users(email) values ('a@x.com') returning id`)).rows[0].id;
 const B = (await db.query(`insert into auth.users(email) values ('admin@x.com') returning id`)).rows[0].id;
 await db.exec(`update public.profiles set role='admin' where email='admin@x.com'`);
