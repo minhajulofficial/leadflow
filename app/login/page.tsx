@@ -1,29 +1,31 @@
 "use client";
-import { useState } from "react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import Logo from "@/components/logo";
+import { Icon } from "@/components/icon";
 
 export default function LoginPage() {
-  const [mode, setMode] = useState<"signin" | "signup">(
-    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("mode") === "signup"
-      ? "signup"
-      : "signin"
-  );
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [show, setShow] = useState(false);
   const [msg, setMsg] = useState<{ type: "error" | "ok"; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const supabase = createClient();
 
+  useEffect(() => { if (new URLSearchParams(location.search).get("mode") === "signup") setMode("signup"); }, []);
+
   const friendly = (m: string) => {
-    if (/email not confirmed/i.test(m)) return "Your email is not confirmed yet. Open the confirmation email we sent, or ask the admin to turn off email confirmation while testing.";
+    if (/email not confirmed/i.test(m)) return "Your email is not confirmed yet. Open the confirmation email we sent you.";
     if (/invalid login credentials/i.test(m)) return "Wrong email or password. If you just signed up, confirm your email first.";
-    if (/rate limit|too many/i.test(m)) return "Too many attempts or emails sent. Please wait a few minutes and try again.";
-    if (/error sending|smtp/i.test(m)) return "Could not send the confirmation email. Ask the admin to turn off email confirmation while testing.";
-    if (/database error/i.test(m)) return "Database is not set up yet (run the setup SQL in Supabase).";
+    if (/rate limit|too many/i.test(m)) return "Too many attempts. Please wait a few minutes and try again.";
+    if (/error sending|smtp/i.test(m)) return "We could not send the confirmation email. Please try again later.";
+    if (/database error/i.test(m)) return "The database is not set up yet. Please contact the site admin.";
     return m;
   };
 
-  async function onSubmit(e: React.MouseEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     setMsg(null);
     if (!email.trim()) return setMsg({ type: "error", text: "Enter your email." });
@@ -31,11 +33,7 @@ export default function LoginPage() {
     setBusy(true);
     try {
       if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: { emailRedirectTo: `${location.origin}/auth/callback` },
-        });
+        const { data, error } = await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: `${location.origin}/auth/callback` } });
         if (error) setMsg({ type: "error", text: friendly(error.message) });
         else if (data.user && data.user.identities?.length === 0) setMsg({ type: "error", text: "This email is already registered. Please sign in." });
         else if (data.session) location.href = "/dashboard";
@@ -45,52 +43,58 @@ export default function LoginPage() {
         if (error) setMsg({ type: "error", text: friendly(error.message) });
         else location.href = "/dashboard";
       }
-    } catch (err) {
-      setMsg({ type: "error", text: "Could not reach the server. Check your internet and try again." });
-    }
+    } catch { setMsg({ type: "error", text: "Could not reach the server. Check your internet and try again." }); }
     setBusy(false);
   }
 
   async function google() {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${location.origin}/auth/callback` },
-    });
+    await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${location.origin}/auth/callback` } });
   }
 
+  const signup = mode === "signup";
   return (
-    <main className="min-h-screen grid place-items-center px-6">
-      <div className="panel w-full max-w-md">
-        <h1 className="text-2xl font-bold">{mode === "signin" ? "Welcome back" : "Create your account"}</h1>
-        <p className="mt-1 text-sm" style={{ color: "var(--muted)" }}>
-          {mode === "signin" ? "Sign in to continue to LeadFlow." : "Free plan, no card needed."}
-        </p>
-
-        <button className="btn w-full mt-6" onClick={google} type="button">Continue with Google</button>
-        <div className="my-5 text-center text-sm" style={{ color: "var(--muted)" }}>or use email</div>
-
-        <div className="space-y-3">
-          <input className="field" type="email" placeholder="Email" value={email}
-                 onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
-          <input className="field" type="password" placeholder="Password (min 8 characters)" value={password}
-                 onChange={(e) => setPassword(e.target.value)}
-                 autoComplete={mode === "signin" ? "current-password" : "new-password"} />
-          <button className="btn btn-primary w-full" onClick={onSubmit} disabled={busy}>
-            {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
-          </button>
+    <main className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
+      <section className="relative hidden flex-col justify-between overflow-hidden p-12 text-white lg:flex" style={{ background: "var(--grad)" }}>
+        <div className="absolute -right-24 -top-24 h-96 w-96 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
+        <div className="absolute -bottom-32 -left-20 h-96 w-96 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
+        <Link href="/" className="relative inline-flex items-center gap-2.5 text-xl font-extrabold"><Logo size={38} text={false} onDark />LeadFlow</Link>
+        <div className="relative max-w-md">
+          <h2 className="text-4xl font-extrabold leading-tight tracking-tight">Turn directories into a pipeline of clients.</h2>
+          <ul className="mt-8 space-y-4">
+            {["Collect leads automatically by niche and city", "Filter out leads without a phone, website or good rating", "Import, export and keep everything organised"].map((t) => (
+              <li key={t} className="flex items-start gap-3"><span className="mt-0.5 grid h-6 w-6 flex-none place-items-center rounded-full bg-white/20 text-xs"><Icon n="check" /></span><span className="text-white/95">{t}</span></li>))}
+          </ul>
         </div>
+        <p className="relative text-sm text-white/75">Free to start. No card needed.</p>
+      </section>
 
-        {msg && (
-          <p role="alert" className="mt-4 text-sm" style={{ color: msg.type === "error" ? "#d64545" : "var(--accent)" }}>
-            {msg.text}
+      <section className="grid place-items-center px-5 py-10">
+        <div className="w-full max-w-md rise">
+          <Link href="/" className="mb-8 inline-block lg:hidden" aria-label="LeadFlow home"><Logo /></Link>
+          <h1 className="text-3xl font-extrabold tracking-tight">{signup ? "Create your account" : "Welcome back"}</h1>
+          <p className="muted mt-1.5">{signup ? "Start on the free plan in under a minute." : "Sign in to continue to LeadFlow."}</p>
+
+          <button type="button" className="btn btn-lg mt-7 w-full" onClick={google}><Icon n="google" /> Continue with Google</button>
+          <div className="muted my-6 flex items-center gap-3 text-xs font-semibold uppercase tracking-wider"><span className="h-px flex-1" style={{ background: "var(--line)" }} />or with email<span className="h-px flex-1" style={{ background: "var(--line)" }} /></div>
+
+          <form onSubmit={submit} className="space-y-4" noValidate>
+            <div><label className="label" htmlFor="email">Email</label>
+              <div className="field-icon"><Icon n="mail" /><input id="email" className="field" type="email" placeholder="you@company.com" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" /></div></div>
+            <div><label className="label" htmlFor="password">Password</label>
+              <div className="field-icon"><Icon n="lock" />
+                <input id="password" className="field" type={show ? "text" : "password"} placeholder="At least 8 characters" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={signup ? "new-password" : "current-password"} style={{ paddingRight: "2.8rem" }} />
+                <button type="button" className="eye" onClick={() => setShow(!show)} aria-label={show ? "Hide password" : "Show password"}><Icon n={show ? "eyeOff" : "eye"} /></button></div></div>
+            <button className="btn btn-primary btn-lg w-full" disabled={busy}>{busy ? <><Icon n="spinner" spin /> Please wait…</> : signup ? "Create account" : "Sign in"}</button>
+          </form>
+
+          {msg && <div role={msg.type === "error" ? "alert" : "status"} className={`alert mt-5 ${msg.type === "error" ? "alert-bad" : "alert-ok"}`}><Icon n={msg.type === "error" ? "no" : "ok"} /><span>{msg.text}</span></div>}
+
+          <p className="muted mt-7 text-center text-sm">
+            {signup ? "Already have an account?" : "New to LeadFlow?"}{" "}
+            <button className="font-bold underline" style={{ color: "var(--accent)" }} onClick={() => { setMode(signup ? "signin" : "signup"); setMsg(null); }}>{signup ? "Sign in" : "Create an account"}</button>
           </p>
-        )}
-
-        <button className="mt-6 text-sm underline" style={{ color: "var(--muted)" }}
-                onClick={() => setMode(mode === "signin" ? "signup" : "signin")}>
-          {mode === "signin" ? "New here? Create an account" : "Already have an account? Sign in"}
-        </button>
-      </div>
+        </div>
+      </section>
     </main>
   );
 }

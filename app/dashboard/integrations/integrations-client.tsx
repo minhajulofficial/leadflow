@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { Icon } from "@/components/icon";
 
 type P = { slug: string; name: string; description: string | null };
 type S = { provider_slug: string; enabled: boolean; has_key: boolean };
@@ -29,27 +30,29 @@ export default function IntegrationsClient({ providers, settings }: { providers:
     if (error) say(slug, false, "Add your API key first."); else location.reload();
   }
 
-  if (!providers.length) return <p className="panel mt-6">No providers are available right now.</p>;
+  if (!providers.length) return <div className="panel empty"><span className="icon-chip"><Icon n="plug" /></span><p>No providers are available right now.</p></div>;
   return (
-    <div className="mt-6 space-y-4">
+    <div className="space-y-4">
       {providers.map((p) => {
         const s = st(p.slug); const m = msg[p.slug];
         return (
-          <section key={p.slug} className="panel space-y-3">
-            <div className="flex items-start justify-between gap-3">
-              <div><h2 className="font-bold">{p.name}</h2><p className="text-sm" style={{ color: "var(--muted)" }}>{p.description}</p></div>
-              {s?.has_key && (
-                <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={s.enabled} onChange={(e) => toggle(p.slug, e.target.checked)} />Use this provider</label>)}
+          <section key={p.slug} className="panel space-y-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex items-start gap-3"><span className="icon-chip"><Icon n="collect" /></span>
+                <div><h2 className="font-bold">{p.name}</h2><p className="muted text-sm">{p.description}</p></div></div>
+              {s?.has_key
+                ? <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={s.enabled} onChange={(e) => toggle(p.slug, e.target.checked)} />Use this provider</label>
+                : <span className="badge badge-warn"><Icon n="key" /> No key yet</span>}
             </div>
-            <p className="text-sm">{s?.has_key ? "✓ API key saved (hidden)." : "No API key yet."}</p>
+            {s?.has_key && <div className="alert alert-ok"><Icon n="ok" /><span>Your API key is saved (hidden). You can replace it any time.</span></div>}
             <div className="flex flex-wrap gap-2">
-              <input className="field !w-auto flex-1 min-w-[16rem]" type="password" autoComplete="off" placeholder={s?.has_key ? "Paste a new key to replace" : "Paste your Apify API token"}
-                     value={keys[p.slug] ?? ""} onChange={(e) => setKeys({ ...keys, [p.slug]: e.target.value })} />
-              <button className="btn btn-primary" disabled={busy === p.slug || !(keys[p.slug] ?? "").trim()} onClick={() => save(p.slug)}>{busy === p.slug ? "Checking…" : "Save key"}</button>
-              {s?.has_key && <button className="btn" onClick={() => remove(p.slug)}>Remove</button>}
+              <div className="field-icon min-w-[16rem] flex-1"><Icon n="key" /><input className="field" type="password" autoComplete="off" aria-label="API token" placeholder={s?.has_key ? "Paste a new key to replace the saved one" : "Paste your Apify API token"}
+                value={keys[p.slug] ?? ""} onChange={(e) => setKeys({ ...keys, [p.slug]: e.target.value })} /></div>
+              <button className="btn btn-primary" disabled={busy === p.slug || !(keys[p.slug] ?? "").trim()} onClick={() => save(p.slug)}>{busy === p.slug ? <><Icon n="spinner" spin /> Checking…</> : <><Icon n="save" /> Save key</>}</button>
+              {s?.has_key && <button className="btn btn-danger" onClick={() => remove(p.slug)}><Icon n="trash" /> Remove</button>}
             </div>
-            <p className="text-xs" style={{ color: "var(--muted)" }}>Find it in Apify Console &gt; Settings &gt; API &amp; Integrations. We test the key before saving it.</p>
-            {m && <p role="status" className="text-sm" style={{ color: m.ok ? "var(--accent)" : "#d64545" }}>{m.text}</p>}
+            <p className="muted text-xs">Find it in Apify Console &gt; Settings &gt; API &amp; Integrations. We test the key before saving it.</p>
+            {m && <div role="status" className={`alert ${m.ok ? "alert-ok" : "alert-bad"}`}><Icon n={m.ok ? "ok" : "no"} /><span>{m.text}</span></div>}
           </section>
         );
       })}

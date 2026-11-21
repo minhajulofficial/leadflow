@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { Icon } from "@/components/icon";
+import PageHead from "@/components/page-head";
 import CollectClient from "./collect-client";
 
 export default async function Collect() {
@@ -18,13 +20,12 @@ export default async function Collect() {
   ]);
   const ready = (providers ?? []).filter((p) => settings?.some((s) => s.provider_slug === p.slug && s.enabled && s.has_key));
   return (
-    <main className="mx-auto max-w-5xl px-6 py-8">
-      <header className="flex items-center justify-between">
-        <span className="text-xl font-bold">Collect leads</span>
-        <div className="flex gap-2"><Link href="/dashboard/integrations" className="btn">Integrations</Link><Link href="/dashboard/leads" className="btn">My leads</Link></div>
-      </header>
-      <CollectClient providers={ready} directories={directories ?? []} countries={countries ?? []} cities={cities ?? []}
-                     initialRuns={runs ?? []} maxPerRun={limits?.max_per_run ?? 20} />
-    </main>
+    <div>
+      <PageHead icon="collect" title="Collect leads" subtitle="Tell us who to look for and where. New leads are saved to My leads automatically.">
+        <Link href="/dashboard/integrations" className="btn"><Icon n="plug" /> Integrations</Link>
+        <Link href="/dashboard/leads" className="btn"><Icon n="leads" /> My leads</Link>
+      </PageHead>
+      <CollectClient providers={ready} directories={directories ?? []} countries={countries ?? []} cities={cities ?? []} initialRuns={runs ?? []} maxPerRun={limits?.max_per_run ?? 20} />
+    </div>
   );
 }

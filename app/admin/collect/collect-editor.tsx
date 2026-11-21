@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { Icon } from "@/components/icon";
 
 type Props = {
   providers: { slug: string; name: string; enabled: boolean }[]; directories: { id: string; name: string; provider_slug: string; active: boolean }[];
@@ -15,47 +16,48 @@ export default function CollectEditor({ providers, directories, countries, citie
   const [cityCountry, setCityCountry] = useState(countries[0]?.code ?? ""); const [cityName, setCityName] = useState("");
   const done = (error: { message: string } | null) => (error ? setMsg(error.message) : location.reload());
 
+  const Check = ({ on, onChange, label }: { on: boolean; onChange: (v: boolean) => void; label: React.ReactNode }) => (
+    <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} />{label}</label>);
   return (
-    <div className="mt-6 space-y-4">
-      {msg && <p role="alert" className="text-sm" style={{ color: "#d64545" }}>{msg}</p>}
-      <section className="panel space-y-3"><h2 className="font-bold">Providers (on/off for all users)</h2>
-        {providers.map((p) => (
-          <label key={p.slug} className="flex items-center gap-2"><input type="checkbox" checked={p.enabled}
-            onChange={async (e) => done((await supabase.from("providers").update({ enabled: e.target.checked }).eq("slug", p.slug)).error)} />{p.name} <code className="text-xs">{p.slug}</code></label>))}
+    <div className="space-y-4">
+      {msg && <div role="alert" className="alert alert-bad"><Icon n="no" /><span>{msg}</span></div>}
+      <section className="panel space-y-3"><h2 className="font-bold"><Icon n="plug" className="mr-2 muted" />Providers <span className="muted text-sm font-normal">(on/off for all users)</span></h2>
+        {providers.map((p) => (<Check key={p.slug} on={p.enabled} label={<>{p.name} <code className="muted text-xs">{p.slug}</code></>}
+          onChange={async (v) => done((await supabase.from("providers").update({ enabled: v }).eq("slug", p.slug)).error)} />))}
       </section>
 
-      <section className="panel space-y-3"><h2 className="font-bold">Directories (shown in the dropdown)</h2>
+      <section className="panel space-y-3"><h2 className="font-bold"><Icon n="layers" className="mr-2 muted" />Directories <span className="muted text-sm font-normal">(shown in the dropdown)</span></h2>
         {directories.map((d) => (
-          <div key={d.id} className="flex items-center gap-3 text-sm">
-            <label className="flex items-center gap-2"><input type="checkbox" checked={d.active}
-              onChange={async (e) => done((await supabase.from("directories").update({ active: e.target.checked }).eq("id", d.id)).error)} />{d.name}</label>
-            <span style={{ color: "var(--muted)" }}>via {d.provider_slug}</span>
-            <button className="btn !py-1 ml-auto" onClick={async () => confirm(`Delete ${d.name}?`) && done((await supabase.from("directories").delete().eq("id", d.id)).error)}>Delete</button>
+          <div key={d.id} className="flex flex-wrap items-center gap-3">
+            <Check on={d.active} label={d.name} onChange={async (v) => done((await supabase.from("directories").update({ active: v }).eq("id", d.id)).error)} />
+            <span className="badge">{d.provider_slug}</span>
+            <button className="btn btn-danger !py-1 ml-auto" onClick={async () => confirm(`Delete ${d.name}?`) && done((await supabase.from("directories").delete().eq("id", d.id)).error)}><Icon n="trash" /> Delete</button>
           </div>))}
-        <div className="flex flex-wrap gap-2">
-          <input className="field !w-auto" placeholder="Directory name" value={dirName} onChange={(e) => setDirName(e.target.value)} />
-          <select className="field !w-auto" value={dirProv} onChange={(e) => setDirProv(e.target.value)}>{providers.map((p) => <option key={p.slug} value={p.slug}>{p.name}</option>)}</select>
-          <button className="btn btn-primary" disabled={!dirName.trim()} onClick={async () => done((await supabase.from("directories").insert({ name: dirName.trim(), provider_slug: dirProv })).error)}>Add</button>
+        <div className="flex flex-wrap gap-2 border-t pt-3" style={{ borderColor: "var(--line)" }}>
+          <input className="field !w-auto" aria-label="Directory name" placeholder="Directory name" value={dirName} onChange={(e) => setDirName(e.target.value)} />
+          <select className="field !w-auto" aria-label="Provider" value={dirProv} onChange={(e) => setDirProv(e.target.value)}>{providers.map((p) => <option key={p.slug} value={p.slug}>{p.name}</option>)}</select>
+          <button className="btn btn-primary" disabled={!dirName.trim()} onClick={async () => done((await supabase.from("directories").insert({ name: dirName.trim(), provider_slug: dirProv })).error)}><Icon n="plus" /> Add directory</button>
         </div>
       </section>
 
-      <section className="panel space-y-3"><h2 className="font-bold">Countries and cities</h2>
+      <section className="panel space-y-4"><h2 className="font-bold"><Icon n="globe" className="mr-2 muted" />Countries and cities</h2>
         <div className="flex flex-wrap gap-2">
-          <input className="field !w-24" placeholder="Code (bd)" maxLength={2} value={cc} onChange={(e) => setCc(e.target.value.toLowerCase())} />
-          <input className="field !w-auto" placeholder="Country name" value={cn} onChange={(e) => setCn(e.target.value)} />
-          <button className="btn btn-primary" disabled={cc.length !== 2 || !cn.trim()} onClick={async () => done((await supabase.from("countries").insert({ code: cc, name: cn.trim() })).error)}>Add country</button>
+          <input className="field !w-28" aria-label="Country code" placeholder="Code (bd)" maxLength={2} value={cc} onChange={(e) => setCc(e.target.value.toLowerCase())} />
+          <input className="field !w-auto" aria-label="Country name" placeholder="Country name" value={cn} onChange={(e) => setCn(e.target.value)} />
+          <button className="btn btn-primary" disabled={cc.length !== 2 || !cn.trim()} onClick={async () => done((await supabase.from("countries").insert({ code: cc, name: cn.trim() })).error)}><Icon n="plus" /> Add country</button>
         </div>
         <div className="flex flex-wrap gap-2">
-          <select className="field !w-auto" value={cityCountry} onChange={(e) => setCityCountry(e.target.value)}>{countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}</select>
-          <input className="field !w-auto" placeholder="City name" value={cityName} onChange={(e) => setCityName(e.target.value)} />
-          <button className="btn btn-primary" disabled={!cityName.trim()} onClick={async () => done((await supabase.from("cities").insert({ country_code: cityCountry, name: cityName.trim() })).error)}>Add city</button>
+          <select className="field !w-auto" aria-label="Country" value={cityCountry} onChange={(e) => setCityCountry(e.target.value)}>{countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}</select>
+          <input className="field !w-auto" aria-label="City name" placeholder="City name" value={cityName} onChange={(e) => setCityName(e.target.value)} />
+          <button className="btn btn-primary" disabled={!cityName.trim()} onClick={async () => done((await supabase.from("cities").insert({ country_code: cityCountry, name: cityName.trim() })).error)}><Icon n="plus" /> Add city</button>
         </div>
-        <div className="space-y-2 text-sm">
+        <div className="space-y-3">
           {countries.map((c) => (
-            <div key={c.code}><strong>{c.name}</strong>:{" "}
-              {cities.filter((x) => x.country_code === c.code).map((x) => (
-                <button key={x.id} className="btn !py-0.5 !px-2 mr-1 mb-1" title="Click to delete" onClick={async () => confirm(`Delete ${x.name}?`) && done((await supabase.from("cities").delete().eq("id", x.id)).error)}>{x.name} ✕</button>))}
-            </div>))}
+            <div key={c.code}><p className="mb-1.5 text-sm font-bold">{c.name}</p>
+              <div className="flex flex-wrap gap-1.5">
+                {cities.filter((x) => x.country_code === c.code).map((x) => (
+                  <button key={x.id} className="btn !py-1 !px-2.5 !text-xs" title="Click to delete" aria-label={`Delete ${x.name}`} onClick={async () => confirm(`Delete ${x.name}?`) && done((await supabase.from("cities").delete().eq("id", x.id)).error)}>{x.name} <Icon n="x" /></button>))}
+              </div></div>))}
         </div>
       </section>
     </div>

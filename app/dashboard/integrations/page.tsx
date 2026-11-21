@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import PageHead from "@/components/page-head";
 import IntegrationsClient from "./integrations-client";
 
 export default async function Integrations() {
@@ -12,16 +12,9 @@ export default async function Integrations() {
     supabase.from("user_provider_settings").select("provider_slug, enabled, has_key"),
   ]);
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8">
-      <header className="flex items-center justify-between">
-        <span className="text-xl font-bold">Integrations</span>
-        <Link href="/dashboard" className="btn">Back</Link>
-      </header>
-      <p className="mt-4 text-sm" style={{ color: "var(--muted)" }}>
-        Auto lead collection runs on <strong>your own</strong> provider account, so the scraping cost is billed by the provider to you.
-        Your key is encrypted and never shown again.
-      </p>
+    <div>
+      <PageHead icon="plug" title="Integrations" subtitle="Connect your own provider account. Scraping costs are billed to you by the provider, and your key is stored encrypted." />
       <IntegrationsClient providers={providers ?? []} settings={settings ?? []} />
-    </main>
+    </div>
   );
 }

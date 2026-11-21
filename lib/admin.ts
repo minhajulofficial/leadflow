@@ -9,6 +9,6 @@ export async function requireAdmin() {
   const { data: me } = await supabase.from("profiles").select("role").eq("id", user.id).single();
   if (me?.role !== "admin") redirect("/dashboard?notice=not-admin");
   const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  if (aal?.currentLevel !== "aal2") redirect("/admin/mfa");
+  if (aal?.currentLevel !== "aal2") redirect("/two-step");
   return { supabase, user };
 }

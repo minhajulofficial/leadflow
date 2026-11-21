@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Papa from "papaparse";
 import { createClient } from "@/lib/supabase/client";
+import { Icon, type IconName } from "@/components/icon";
 import { FIELDS, cleanLead, mapRow, toCSV, type LeadInput, type Rules } from "@/lib/leads";
 
 type Row = Record<string, any>;
@@ -124,84 +125,86 @@ export default function LeadsClient({ used, limit }: { used: number; limit: numb
   const pct = limit ? Math.min(100, Math.round((usedNow / limit) * 100)) : 0;
   const pages = Math.max(1, Math.ceil(total / PAGE));
 
+  const LINKS: [string, string, IconName][] = [["Website", "website", "globe"], ["Facebook", "facebook", "facebook"], ["Instagram", "instagram", "instagram"], ["LinkedIn", "linkedin", "linkedin"]];
+  const warnMsg = /limit reached/i.test(msg);
   return (
-    <>
-      <section className="panel mt-6">
-        <div className="flex justify-between text-sm"><span>Leads this month</span><span>{usedNow}{limit ? ` / ${limit}` : ""}</span></div>
-        {limit && <div className="mt-2 h-2 rounded-full" style={{ background: "var(--accent-soft)" }}>
-          <div className="h-2 rounded-full" style={{ width: `${pct}%`, background: "var(--accent)" }} /></div>}
+    <div className="space-y-4">
+      <section className="panel">
+        <div className="flex items-center justify-between text-sm"><span className="font-semibold">Monthly usage</span><span className="muted">{usedNow}{limit ? ` of ${limit} leads` : " leads"}</span></div>
+        {limit && <div className="progress mt-2.5" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}><div style={{ width: `${pct}%` }} /></div>}
       </section>
 
-      <section className="panel mt-4 space-y-3">
+      <section className="panel space-y-3">
         <div className="grid gap-3 md:grid-cols-4">
-          <input className="field md:col-span-2" placeholder="Search name, email, company, role…" value={f.q} onChange={(e) => upd("q", e.target.value)} />
-          <input className="field" placeholder="Country" value={f.country} onChange={(e) => upd("country", e.target.value)} />
-          <input className="field" placeholder="City" value={f.city} onChange={(e) => upd("city", e.target.value)} />
+          <div className="field-icon md:col-span-2"><Icon n="search" /><input className="field" aria-label="Search leads" placeholder="Search name, email, company, role…" value={f.q} onChange={(e) => upd("q", e.target.value)} /></div>
+          <div className="field-icon"><Icon n="globe" /><input className="field" aria-label="Country" placeholder="Country" value={f.country} onChange={(e) => upd("country", e.target.value)} /></div>
+          <div className="field-icon"><Icon n="pin" /><input className="field" aria-label="City" placeholder="City" value={f.city} onChange={(e) => upd("city", e.target.value)} /></div>
         </div>
-        <div className="flex flex-wrap items-center gap-4 text-sm">
-          {([["hasEmail", "Has email"], ["hasPhone", "Has phone"], ["hasWebsite", "Has website"]] as const).map(([k, l]) => (
-            <label key={k} className="flex items-center gap-2"><input type="checkbox" checked={f[k]} onChange={(e) => upd(k, e.target.checked)} />{l}</label>))}
-          <select className="field !w-auto" value={f.source} onChange={(e) => upd("source", e.target.value)}>
-            <option value="">All sources</option><option value="manual">Manual</option><option value="csv">CSV</option>
-            <option value="auto">Auto</option><option value="extension">Extension</option>
+        <div className="flex flex-wrap items-center gap-2">
+          {([["hasEmail", "Has email", "mail"], ["hasPhone", "Has phone", "phone"], ["hasWebsite", "Has website", "globe"]] as const).map(([k, l, ic]) => (
+            <button key={k} type="button" aria-pressed={f[k]} className={f[k] ? "btn btn-primary !py-1.5" : "btn !py-1.5"} onClick={() => upd(k, !f[k])}><Icon n={ic} />{l}</button>))}
+          <select className="field !w-auto !py-1.5" aria-label="Source" value={f.source} onChange={(e) => upd("source", e.target.value)}>
+            <option value="">All sources</option><option value="manual">Manual</option><option value="csv">CSV</option><option value="auto">Auto</option><option value="extension">Extension</option>
           </select>
-          <button className="btn" onClick={() => { setF(EMPTY); setPage(0); }}>Reset</button>
+          <button className="btn !py-1.5" onClick={() => { setF(EMPTY); setPage(0); }}><Icon n="undo" /> Reset</button>
         </div>
       </section>
 
-      <section className="mt-4 flex flex-wrap items-center gap-2">
-        <button className="btn btn-primary" onClick={() => setShowAdd(!showAdd)}>+ Add lead</button>
-        <button className="btn" disabled={busy} onClick={() => fileRef.current?.click()}>Import CSV</button>
+      <section className="flex flex-wrap items-center gap-2">
+        <button className="btn btn-primary" onClick={() => setShowAdd(!showAdd)}><Icon n="plus" /> Add lead</button>
+        <button className="btn" disabled={busy} onClick={() => fileRef.current?.click()}><Icon n="import" /> Import CSV</button>
         <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={(e) => e.target.files?.[0] && onCSV(e.target.files[0])} />
-        <button className="btn" disabled={busy || !total} onClick={exportCSV}>Export CSV</button>
-        {selected.size > 0 && <button className="btn" onClick={deleteSelected}>Delete ({selected.size})</button>}
-        <div className="ml-auto flex flex-wrap gap-3 text-sm">
-          <span style={{ color: "var(--muted)" }}>Skip leads without:</span>
+        <button className="btn" disabled={busy || !total} onClick={exportCSV}><Icon n="export" /> Export CSV</button>
+        {selected.size > 0 && <button className="btn btn-danger" onClick={deleteSelected}><Icon n="trash" /> Delete ({selected.size})</button>}
+        <div className="ml-auto flex flex-wrap items-center gap-3 text-sm">
+          <span className="muted">When importing, skip leads without:</span>
           {([["requireEmail", "email"], ["requirePhone", "phone"], ["requireWebsite", "website"]] as const).map(([k, l]) => (
-            <label key={k} className="flex items-center gap-1"><input type="checkbox" checked={rules[k]} onChange={(e) => setRules({ ...rules, [k]: e.target.checked })} />{l}</label>))}
+            <label key={k} className="flex cursor-pointer items-center gap-1.5"><input type="checkbox" checked={rules[k]} onChange={(e) => setRules({ ...rules, [k]: e.target.checked })} />{l}</label>))}
         </div>
       </section>
 
-      {msg && <p role="status" className="mt-3 text-sm" style={{ color: "var(--accent)" }}>{msg}</p>}
+      {msg && <div role="status" className={`alert ${warnMsg ? "alert-warn" : "alert-info"}`}><Icon n={warnMsg ? "warn" : "info"} /><span>{msg}</span></div>}
 
       {showAdd && (
-        <form onSubmit={onAdd} className="panel mt-4 grid gap-3 md:grid-cols-3">
-          {FIELDS.map((k) => (
-            <input key={k} className="field" placeholder={k[0].toUpperCase() + k.slice(1)} value={add[k] ?? ""} onChange={(e) => setAdd({ ...add, [k]: e.target.value })} />))}
-          <button className="btn btn-primary md:col-span-3" disabled={busy}>Save lead</button>
+        <form onSubmit={onAdd} className="panel grid gap-3 md:grid-cols-3">
+          {FIELDS.map((k) => (<input key={k} className="field" aria-label={k} placeholder={k[0].toUpperCase() + k.slice(1)} value={add[k] ?? ""} onChange={(e) => setAdd({ ...add, [k]: e.target.value })} />))}
+          <button className="btn btn-primary md:col-span-3" disabled={busy}><Icon n="save" /> Save lead</button>
         </form>
       )}
 
-      <section className="panel mt-4 overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead style={{ color: "var(--muted)" }}><tr>
-            <th className="py-2 pr-2"><input type="checkbox" aria-label="Select all" checked={rows.length > 0 && rows.every((r) => selected.has(r.id))}
-              onChange={(e) => setSelected(e.target.checked ? new Set(rows.map((r) => r.id)) : new Set())} /></th>
-            <th>Name</th><th>Role</th><th>Company</th><th>Email</th><th>Phone</th><th>Location</th><th>Links</th><th>Source</th></tr></thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.id} style={{ borderTop: "1px solid var(--line)" }}>
-                <td className="py-2 pr-2"><input type="checkbox" aria-label="Select lead" checked={selected.has(r.id)}
-                  onChange={(e) => { const s = new Set(selected); e.target.checked ? s.add(r.id) : s.delete(r.id); setSelected(s); }} /></td>
-                <td>{r.name}</td><td>{r.role}</td><td>{r.company}</td><td>{r.email}</td><td>{r.phone}</td>
-                <td>{[r.city, r.country].filter(Boolean).join(", ")}</td>
-                <td className="space-x-2">{[["web", r.website], ["fb", r.facebook], ["ig", r.instagram], ["in", r.linkedin]]
-                  .filter(([, u]) => u && /^https?:\/\//i.test(u as string)).map(([l, u]) =>
-                    <a key={l as string} href={u as string} target="_blank" rel="noopener noreferrer nofollow" className="underline">{l}</a>)}</td>
-                <td>{r.source}</td>
-              </tr>))}
-            {!rows.length && <tr><td colSpan={9} className="py-8 text-center" style={{ color: "var(--muted)" }}>No leads yet. Add one or import a CSV.</td></tr>}
-          </tbody>
-        </table>
+      <section className="panel">
+        <div className="table-wrap">
+          <table className="tbl">
+            <thead><tr>
+              <th className="w-8"><input type="checkbox" aria-label="Select all" checked={rows.length > 0 && rows.every((r) => selected.has(r.id))} onChange={(e) => setSelected(e.target.checked ? new Set(rows.map((r) => r.id)) : new Set())} /></th>
+              <th>Name</th><th>Role</th><th>Email</th><th>Phone</th><th>Location</th><th>Links</th><th>Source</th></tr></thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.id}>
+                  <td><input type="checkbox" aria-label="Select lead" checked={selected.has(r.id)} onChange={(e) => { const x = new Set(selected); e.target.checked ? x.add(r.id) : x.delete(r.id); setSelected(x); }} /></td>
+                  <td><p className="font-semibold">{r.name || "–"}</p>{r.company && r.company !== r.name && <p className="muted text-xs">{r.company}</p>}</td>
+                  <td>{r.role || "–"}</td><td>{r.email || "–"}</td><td>{r.phone || "–"}</td>
+                  <td>{[r.city, r.country].filter(Boolean).join(", ") || "–"}</td>
+                  <td><span className="flex gap-2.5">{LINKS.filter(([, k]) => r[k] && /^https?:\/\//i.test(r[k])).map(([l, k, ic]) => (
+                    <a key={k} href={r[k]} target="_blank" rel="noopener noreferrer nofollow" aria-label={l} title={l} className="muted hover:text-[var(--accent)]"><Icon n={ic} /></a>))}</span></td>
+                  <td><span className={`badge ${r.source === "auto" ? "badge-warn" : ""}`}>{r.source}</span></td>
+                </tr>))}
+            </tbody>
+          </table>
+        </div>
+        {!rows.length && (
+          <div className="empty"><span className="icon-chip"><Icon n="leads" /></span>
+            <p className="font-bold" style={{ color: "var(--ink)" }}>No leads here yet</p>
+            <p className="mt-1 text-sm">Add one by hand, import a CSV, or collect some automatically.</p></div>)}
         <div className="mt-4 flex items-center justify-between text-sm">
-          <span style={{ color: "var(--muted)" }}>{total} lead(s)</span>
+          <span className="muted">{total} lead{total === 1 ? "" : "s"}</span>
           <div className="flex items-center gap-2">
-            <button className="btn" disabled={page === 0} onClick={() => setPage(page - 1)}>Prev</button>
-            <span>{page + 1} / {pages}</span>
-            <button className="btn" disabled={page + 1 >= pages} onClick={() => setPage(page + 1)}>Next</button>
+            <button className="btn !px-3" aria-label="Previous page" disabled={page === 0} onClick={() => setPage(page - 1)}><Icon n="left" /></button>
+            <span className="font-semibold">{page + 1} / {pages}</span>
+            <button className="btn !px-3" aria-label="Next page" disabled={page + 1 >= pages} onClick={() => setPage(page + 1)}><Icon n="right" /></button>
           </div>
         </div>
       </section>
-    </>
+    </div>
   );
 }

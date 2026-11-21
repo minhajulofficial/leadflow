@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { Icon } from "@/components/icon";
+import PageHead from "@/components/page-head";
 
 type Check = { name: string; ok: boolean; detail: string; fix?: string };
 
@@ -34,7 +36,7 @@ export default async function Status() {
   const { data: factors } = await supabase.auth.mfa.listFactors();
   const verified = factors?.totp?.length ?? 0;
   checks.push({ name: "2-step verification (this session)", ok: aal?.currentLevel === "aal2", detail: `level = ${aal?.currentLevel ?? "?"}, authenticator apps set up = ${verified}`,
-    fix: verified ? "Open /admin/mfa and enter the 6-digit code." : "Open /admin/mfa and scan the QR code. If no QR appears, enable TOTP in Supabase > Authentication > Multi-Factor." });
+    fix: verified ? "Open /two-step and enter the 6-digit code." : "Open /two-step and scan the QR code. If no QR appears, enable TOTP in Supabase > Authentication > Multi-Factor." });
   const adminRpc = await supabase.rpc("is_admin");
   checks.push(adminRpc.error
     ? { name: "Database says you are admin", ok: false, detail: adminRpc.error.message, fix: "Run migration 0001 and 0003." }
@@ -43,21 +45,22 @@ export default async function Status() {
 
   const bad = checks.filter((c) => !c.ok);
   return (
-    <main className="mx-auto max-w-3xl px-6 py-8">
-      <header className="flex items-center justify-between"><span className="text-xl font-bold">Setup status</span><Link href="/dashboard" className="btn">Back</Link></header>
-      <p className="mt-4 text-sm" style={{ color: "var(--muted)" }}>{bad.length ? `${bad.length} thing(s) need attention. Take a screenshot of this page if you need help.` : "Everything looks good."}</p>
-      <section className="panel mt-4 overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <tbody>
-            {checks.map((c) => (
-              <tr key={c.name} style={{ borderTop: "1px solid var(--line)" }}>
-                <td className="py-2 pr-3">{c.ok ? "✅" : "❌"}</td>
-                <td className="pr-3 font-semibold">{c.name}</td>
-                <td><span style={{ color: "var(--muted)" }}>{c.detail}</span>{!c.ok && c.fix && <div className="mt-1" style={{ color: "#d64545" }}>→ {c.fix}</div>}</td>
-              </tr>))}
-          </tbody>
-        </table>
+    <div className="space-y-6">
+      <PageHead icon="health" title="Setup status" subtitle="A quick health check of your account and database.">
+        <Link href="/dashboard/status" className="btn"><Icon n="refresh" /> Re-check</Link>
+      </PageHead>
+      <div className={`alert ${bad.length ? "alert-warn" : "alert-ok"}`} role="status"><Icon n={bad.length ? "warn" : "ok"} />
+        <span>{bad.length ? `${bad.length} thing(s) need attention. Send a screenshot of this page if you need help.` : "Everything looks good."}</span></div>
+      <section className="panel table-wrap">
+        <table className="tbl"><tbody>
+          {checks.map((c) => (
+            <tr key={c.name}>
+              <td className="w-8"><Icon n={c.ok ? "ok" : "no"} className={c.ok ? "text-[var(--ok)]" : "text-[var(--bad)]"} /></td>
+              <td className="font-semibold">{c.name}</td>
+              <td><span className="muted">{c.detail}</span>{!c.ok && c.fix && <div className="mt-1 text-[var(--bad)]">→ {c.fix}</div>}</td>
+            </tr>))}
+        </tbody></table>
       </section>
-    </main>
+    </div>
   );
 }

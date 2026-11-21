@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { Icon } from "@/components/icon";
 
 type M = { id?: string; name: string; account_number: string; instructions: string | null; active: boolean };
 
@@ -26,17 +27,17 @@ export default function MethodsEditor({ initial }: { initial: M[] }) {
   }
 
   return (
-    <div className="mt-4 space-y-3">
+    <div className="space-y-4">
+      {msg && <div role="alert" className="alert alert-bad"><Icon n="no" /><span>{msg}</span></div>}
       {rows.map((r, i) => (
         <div key={r.id ?? `new${i}`} className="panel grid gap-3 md:grid-cols-2">
-          <input className="field" placeholder="Name (bKash, Nagad…)" value={r.name} onChange={(e) => set(i, { name: e.target.value })} />
-          <input className="field" placeholder="Account number" value={r.account_number} onChange={(e) => set(i, { account_number: e.target.value })} />
-          <input className="field md:col-span-2" placeholder="Instructions shown to the user" value={r.instructions ?? ""} onChange={(e) => set(i, { instructions: e.target.value })} />
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={r.active} onChange={(e) => set(i, { active: e.target.checked })} />Active</label>
-          <div className="flex gap-2 justify-end"><button className="btn btn-primary" onClick={() => save(i)}>Save</button><button className="btn" onClick={() => remove(i)}>Delete</button></div>
+          <input className="field" aria-label="Name" placeholder="Name (bKash, Nagad…)" value={r.name} onChange={(e) => set(i, { name: e.target.value })} />
+          <input className="field" aria-label="Account number" placeholder="Account number" value={r.account_number} onChange={(e) => set(i, { account_number: e.target.value })} />
+          <input className="field md:col-span-2" aria-label="Instructions" placeholder="Instructions shown to the user" value={r.instructions ?? ""} onChange={(e) => set(i, { instructions: e.target.value })} />
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold"><input type="checkbox" checked={r.active} onChange={(e) => set(i, { active: e.target.checked })} />Active (visible to users)</label>
+          <div className="flex justify-end gap-2"><button className="btn btn-primary" onClick={() => save(i)}><Icon n="save" /> Save</button><button className="btn btn-danger" onClick={() => remove(i)}><Icon n="trash" /> Delete</button></div>
         </div>))}
-      <button className="btn" onClick={() => setRows([...rows, { name: "", account_number: "", instructions: "", active: false }])}>+ Add method</button>
-      {msg && <p role="status" className="text-sm" style={{ color: "#d64545" }}>{msg}</p>}
+      <button className="btn" onClick={() => setRows([...rows, { name: "", account_number: "", instructions: "", active: false }])}><Icon n="plus" /> Add method</button>
     </div>
   );
 }

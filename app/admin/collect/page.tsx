@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/lib/admin";
-import AdminNav from "../admin-nav";
+import PageHead from "@/components/page-head";
 import CollectEditor from "./collect-editor";
 
 export default async function AdminCollect() {
@@ -11,9 +11,9 @@ export default async function AdminCollect() {
     supabase.from("cities").select("id, name, country_code").order("name"),
   ]);
   return (
-    <main className="mx-auto max-w-4xl px-6 py-8">
-      <AdminNav />
+    <div>
+      <PageHead icon="sliders" title="Collect settings" subtitle="Control which providers, directories and locations your users can choose from." />
       <CollectEditor providers={providers ?? []} directories={directories ?? []} countries={countries ?? []} cities={cities ?? []} />
-    </main>
+    </div>
   );
 }

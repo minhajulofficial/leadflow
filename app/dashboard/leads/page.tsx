@@ -1,6 +1,6 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import PageHead from "@/components/page-head";
 import LeadsClient from "./leads-client";
 
 export default async function LeadsPage() {
@@ -9,14 +9,10 @@ export default async function LeadsPage() {
   if (!user) redirect("/login");
   const { data } = await supabase.rpc("my_lead_usage");
   const usage = Array.isArray(data) ? data[0] : data;
-
   return (
-    <main className="mx-auto max-w-6xl px-6 py-8">
-      <header className="flex items-center justify-between">
-        <span className="text-xl font-bold">Leads</span>
-        <Link href="/dashboard" className="btn">Back</Link>
-      </header>
+    <div>
+      <PageHead icon="leads" title="My leads" subtitle="Everything you have collected or added. Search, filter, import and export." />
       <LeadsClient used={usage?.used ?? 0} limit={usage?.lim ?? null} />
-    </main>
+    </div>
   );
 }

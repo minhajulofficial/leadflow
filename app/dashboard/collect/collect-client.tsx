@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { Icon } from "@/components/icon";
 import { useEffect, useRef, useState } from "react";
 
 type Run = { id: string; label: string | null; status: string; found: number; added: number; skipped: number; duplicates: number; error: string | null; created_at: string };
@@ -62,63 +63,82 @@ export default function CollectClient({ providers, directories, countries, citie
   }
 
   if (!providers.length) return (
-    <section className="panel mt-6">
-      <p>To collect leads automatically, add your Apify API key first.</p>
-      <Link href="/dashboard/integrations" className="btn btn-primary mt-4">Go to Integrations</Link>
+    <section className="panel text-center">
+      <div className="empty"><span className="icon-chip"><Icon n="plug" /></span>
+        <p className="text-lg font-bold" style={{ color: "var(--ink)" }}>Connect your Apify account first</p>
+        <p className="mx-auto mt-1 max-w-md text-sm">Automatic collection runs on your own Apify account. It takes a minute: paste your API token once and you are ready.</p>
+        <Link href="/dashboard/integrations" className="btn btn-primary mt-5">Go to Integrations <Icon n="arrow" /></Link></div>
     </section>
   );
 
-  const label = (t: string) => <label className="text-sm font-semibold">{t}</label>;
+  const stepHead = (n: number, t: string, sub: string) => (<div className="mb-4 flex items-center gap-3"><span className="icon-chip sm font-extrabold">{n}</span><div><h2 className="font-bold">{t}</h2><p className="muted text-sm">{sub}</p></div></div>);
+  const running = (s: string) => s === "running" || s === "importing";
   return (
-    <>
-      <section className="panel mt-6 grid gap-4 md:grid-cols-2">
-        <div className="space-y-1">{label("Provider")}<select className="field" value={provider} onChange={(e) => setProvider(e.target.value)}>{providers.map((p) => <option key={p.slug} value={p.slug}>{p.name}</option>)}</select></div>
-        <div className="space-y-1">{label("Directory")}<select className="field" value={directory} onChange={(e) => setDirectory(e.target.value)}>{dirs.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
-        <div className="space-y-1 md:col-span-2">{label("Niches (comma separated, up to 5)")}<input className="field" placeholder="dentist, digital marketing agency, cafe" value={niches} onChange={(e) => setNiches(e.target.value)} /></div>
-        <div className="space-y-1">{label("Country")}<select className="field" value={country} onChange={(e) => setCountry(e.target.value)}>{countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}</select></div>
-        <div className="space-y-1">{label(`Results per city (max ${maxPerRun} on your plan)`)}<input className="field" type="number" min={1} max={maxPerRun} value={max} onChange={(e) => setMax(Number(e.target.value))} /></div>
-        <div className="space-y-1 md:col-span-2">{label(`Cities (choose up to 5) · ${cityIds.length} selected`)}
-          <div className="flex flex-wrap gap-2">
-            {countryCities.map((c) => { const on = cityIds.includes(c.id); return (
-              <button type="button" key={c.id} className={on ? "btn btn-primary" : "btn"} aria-pressed={on}
-                onClick={() => setCityIds(on ? cityIds.filter((x) => x !== c.id) : cityIds.length < 5 ? [...cityIds, c.id] : cityIds)}>{c.name}</button>); })}
-          </div>
-        </div>
-        <div className="md:col-span-2 space-y-2">
-          {label("Keep only leads that have")}
-          <div className="flex flex-wrap gap-4 text-sm">
-            {([["requirePhone", "Phone"], ["requireWebsite", "Website"], ["requireEmail", "Email"]] as const).map(([k, l]) => (
-              <label key={k} className="flex items-center gap-2"><input type="checkbox" checked={rules[k]} onChange={(e) => setRules({ ...rules, [k]: e.target.checked })} />{l}</label>))}
-          </div>
-          {rules.requireEmail && <p className="text-xs" style={{ color: "#b7791f" }}>Google Maps rarely lists emails, so most results may be dropped with this on.</p>}
-        </div>
-        <div className="space-y-1">{label("Minimum rating (0-5)")}<input className="field" inputMode="decimal" placeholder="e.g. 4" value={minRating} onChange={(e) => setMinRating(e.target.value)} /></div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">{label("Min reviews")}<input className="field" inputMode="numeric" value={minReviews} onChange={(e) => setMinReviews(e.target.value)} /></div>
-          <div className="space-y-1">{label("Max reviews")}<input className="field" inputMode="numeric" value={maxReviews} onChange={(e) => setMaxReviews(e.target.value)} /></div>
-        </div>
-        <div className="md:col-span-2">
-          <button className="btn btn-primary" disabled={busy || !niches.trim() || !cityIds.length || !directory} onClick={start}>{busy ? "Starting…" : `Start collecting (${cityIds.length || 0} city run${cityIds.length === 1 ? "" : "s"})`}</button>
-          <p className="mt-2 text-xs" style={{ color: "var(--muted)" }}>Billed to your own Apify account. Collect only public business data and follow each directory&apos;s terms and local laws.</p>
-          {msg && <p role="status" className="mt-2 text-sm" style={{ color: msg.ok ? "var(--accent)" : "#d64545" }}>{msg.text}</p>}
+    <div className="space-y-4">
+      <section className="panel">
+        {stepHead(1, "What are you looking for?", "Choose where to search and the type of business.")}
+        <div className="grid gap-4 md:grid-cols-2">
+          <div><label className="label" htmlFor="prov">Provider</label><select id="prov" className="field" value={provider} onChange={(e) => setProvider(e.target.value)}>{providers.map((p) => <option key={p.slug} value={p.slug}>{p.name}</option>)}</select></div>
+          <div><label className="label" htmlFor="dir">Directory</label><select id="dir" className="field" value={directory} onChange={(e) => setDirectory(e.target.value)}>{dirs.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></div>
+          <div className="md:col-span-2"><label className="label" htmlFor="niches">Niches <span className="muted font-normal">(comma separated, up to 5)</span></label>
+            <div className="field-icon"><Icon n="tag" /><input id="niches" className="field" placeholder="dentist, digital marketing agency, cafe" value={niches} onChange={(e) => setNiches(e.target.value)} /></div></div>
         </div>
       </section>
 
-      <section className="panel mt-4 overflow-x-auto">
-        <h2 className="font-bold">Recent runs</h2>
-        <table className="mt-3 w-full text-left text-sm">
-          <thead style={{ color: "var(--muted)" }}><tr><th className="py-2">When</th><th>Search</th><th>Status</th><th>Found</th><th>Added</th><th>Filtered</th><th>Duplicates</th></tr></thead>
-          <tbody>
-            {runs.map((r) => (
-              <tr key={r.id} style={{ borderTop: "1px solid var(--line)" }}>
-                <td className="py-2">{new Date(r.created_at).toLocaleString()}</td><td>{r.label}</td>
-                <td>{r.status === "running" || r.status === "importing" ? "⏳ " + r.status : r.status}{r.error ? ` – ${r.error}` : ""}</td>
-                <td>{r.found}</td><td>{r.added}</td><td>{r.skipped}</td><td>{r.duplicates}</td>
-              </tr>))}
-            {!runs.length && <tr><td colSpan={7} className="py-6 text-center" style={{ color: "var(--muted)" }}>No runs yet.</td></tr>}
-          </tbody>
-        </table>
+      <section className="panel">
+        {stepHead(2, "Where?", "Pick a country, then up to 5 cities. Each city runs as its own search.")}
+        <div className="grid gap-4 md:grid-cols-2">
+          <div><label className="label" htmlFor="country">Country</label><select id="country" className="field" value={country} onChange={(e) => setCountry(e.target.value)}>{countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}</select></div>
+          <div><label className="label" htmlFor="max">Results per city <span className="muted font-normal">(max {maxPerRun} on your plan)</span></label>
+            <input id="max" className="field" type="number" min={1} max={maxPerRun} value={max} onChange={(e) => setMax(Number(e.target.value))} /></div>
+          <div className="md:col-span-2"><p className="label">Cities <span className="muted font-normal">· {cityIds.length} selected</span></p>
+            <div className="flex flex-wrap gap-2">
+              {countryCities.map((c) => { const on = cityIds.includes(c.id); return (
+                <button type="button" key={c.id} className={on ? "btn btn-primary !py-1.5" : "btn !py-1.5"} aria-pressed={on}
+                  onClick={() => setCityIds(on ? cityIds.filter((x) => x !== c.id) : cityIds.length < 5 ? [...cityIds, c.id] : cityIds)}>{on && <Icon n="check" />}{c.name}</button>); })}
+            </div></div>
+        </div>
       </section>
-    </>
+
+      <section className="panel">
+        {stepHead(3, "Keep only the good ones", "Leads that do not match are dropped before they count against your plan.")}
+        <div className="flex flex-wrap gap-2">
+          {([["requirePhone", "Has phone", "phone"], ["requireWebsite", "Has website", "globe"], ["requireEmail", "Has email", "mail"]] as const).map(([k, l, ic]) => (
+            <button type="button" key={k} aria-pressed={rules[k]} className={rules[k] ? "btn btn-primary !py-1.5" : "btn !py-1.5"} onClick={() => setRules({ ...rules, [k]: !rules[k] })}><Icon n={ic} />{l}</button>))}
+        </div>
+        {rules.requireEmail && <div className="alert alert-warn mt-3"><Icon n="warn" /><span>Google Maps rarely lists emails, so most results may be dropped with this on.</span></div>}
+        <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <div><label className="label" htmlFor="mr">Minimum rating (0-5)</label><div className="field-icon"><Icon n="star" /><input id="mr" className="field" inputMode="decimal" placeholder="e.g. 4" value={minRating} onChange={(e) => setMinRating(e.target.value)} /></div></div>
+          <div><label className="label" htmlFor="mnr">Min reviews</label><input id="mnr" className="field" inputMode="numeric" value={minReviews} onChange={(e) => setMinReviews(e.target.value)} /></div>
+          <div><label className="label" htmlFor="mxr">Max reviews</label><input id="mxr" className="field" inputMode="numeric" value={maxReviews} onChange={(e) => setMaxReviews(e.target.value)} /></div>
+        </div>
+      </section>
+
+      <section className="panel">
+        <button className="btn btn-primary btn-lg" disabled={busy || !niches.trim() || !cityIds.length || !directory} onClick={start}>
+          {busy ? <><Icon n="spinner" spin /> Starting…</> : <><Icon n="rocket" /> Start collecting ({cityIds.length || 0} search{cityIds.length === 1 ? "" : "es"})</>}</button>
+        <p className="muted mt-3 text-xs">Billed to your own Apify account. Collect only public business data and follow each directory&apos;s terms and local laws.</p>
+        {msg && <div role="status" className={`alert mt-3 ${msg.ok ? "alert-ok" : "alert-bad"}`}><Icon n={msg.ok ? "ok" : "no"} /><span>{msg.text}</span></div>}
+      </section>
+
+      <section className="panel">
+        <h2 className="font-bold">Recent runs</h2>
+        <div className="table-wrap mt-3">
+          <table className="tbl">
+            <thead><tr><th>When</th><th>Search</th><th>Status</th><th>Found</th><th>Added</th><th>Filtered</th><th>Duplicates</th></tr></thead>
+            <tbody>
+              {runs.map((r) => (
+                <tr key={r.id}>
+                  <td className="whitespace-nowrap">{new Date(r.created_at).toLocaleString()}</td><td>{r.label}</td>
+                  <td>{running(r.status) ? <span className="badge badge-warn"><Icon n="spinner" spin /> {r.status}</span> : r.status === "succeeded" ? <span className="badge badge-ok"><Icon n="check" /> done</span> : <span className="badge badge-bad"><Icon n="x" /> failed</span>}
+                    {r.error && <p className="muted mt-1 text-xs">{r.error}</p>}</td>
+                  <td>{r.found}</td><td className="font-semibold">{r.added}</td><td>{r.skipped}</td><td>{r.duplicates}</td>
+                </tr>))}
+            </tbody>
+          </table>
+        </div>
+        {!runs.length && <div className="empty"><span className="icon-chip"><Icon n="collect" /></span><p>No runs yet. Your first one will show up here.</p></div>}
+      </section>
+    </div>
   );
 }
