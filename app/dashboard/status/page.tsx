@@ -21,10 +21,10 @@ export default async function Status() {
   const checks: Check[] = [
     { name: "Signed in", ok: true, detail: user.email ?? user.id },
     profileRes.error
-      ? { name: "Your profile row", ok: false, detail: profileRes.error.message, fix: "Run leadflow-supabase-setup.sql (migration 0001)." }
+      ? { name: "Your profile row", ok: false, detail: profileRes.error.message, fix: "Run supabase/migrations/0001_init.sql." }
       : profileRes.data
         ? { name: "Your profile row", ok: true, detail: `role = ${profileRes.data.role}, plan = ${profileRes.data.plan}` }
-        : { name: "Your profile row", ok: false, detail: "No profile for this account.", fix: "Run leadflow-fix-admin.sql (creates missing profiles and makes you admin)." },
+        : { name: "Your profile row", ok: false, detail: "No profile for this account.", fix: "Run supabase/migrations/0005_backfill_profiles.sql (creates missing profiles), then set your role to admin in SQL Editor — see SETUP.md." },
     await table("Column plan_expires_at (0003)", supabase.from("profiles").select("plan_expires_at").limit(1), "Run migration 0003."),
     await table("Table leads (0002)", head("leads"), "Run migration 0002."),
     await table("Table payments (0003)", head("payments"), "Run migration 0003."),
