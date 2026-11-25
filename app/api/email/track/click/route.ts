@@ -1,12 +1,15 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { decodeClickTarget, verifyTracking } from "@/lib/email/tracking";
 import { recordEvent } from "@/lib/email/events";
+import { checkRateLimit, rateLimitKey, RATE_LIMITS } from "@/lib/rate-limit";
 
 /**
  * Click redirect (public GET, no login). Verifies the signed token, records
  * the click, then 302s to the original link. Only http(s) targets are
  * allowed, and the token binds the click to one recipient — the route cannot
- * be used as an open redirect without a valid token.
+ * be used as an open redirect without a valid token. Rate-limited per IP;
+ * on limit the redirect still happens (never break the recipient's click)
+ * but no event is recorded.
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -16,9 +19,10 @@ export async function GET(req: Request) {
   if (!v || !target) {
     return new Response("This link is not valid.", { status: 400, headers: { "content-type": "text/plain" } });
   }
+  const limited = !checkRateLimit(rateLimitKey(req, "track-click"), RATE_LIMITS.track).ok;
   let db: any;
   try { db = createServiceClient(); } catch { /* still redirect below */ }
-  if (db) {
+  if (db && !limited) {
     const { data: rec } = await db.from("campaign_recipients").select("id, campaign_id, user_id")
       .eq("id", v.recipientId).eq("user_id", v.userId).maybeSingle();
     if (rec) {

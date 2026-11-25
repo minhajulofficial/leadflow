@@ -61,6 +61,19 @@ export default async function Status() {
             </tr>))}
         </tbody></table>
       </section>
+      <section className="panel space-y-2">
+        <h2 className="text-lg font-bold">Google sign-in (setup checklist)</h2>
+        <p className="muted text-sm">
+          The &ldquo;Continue with Google&rdquo; button works only after the owner enables the Google
+          provider — this page cannot detect that setting, so check it by hand (full steps in SETUP.md §2):
+        </p>
+        <ol className="list-decimal space-y-1 pl-5 text-sm">
+          <li>Supabase → Authentication → Providers → enable <strong>Google</strong>, paste the OAuth client ID and secret from Google Cloud Console (APIs &amp; Services → Credentials → OAuth client ID, web application).</li>
+          <li>In the same Google client, add the authorised redirect URI shown in Supabase (…/auth/v1/callback for your project).</li>
+          <li>Supabase → Authentication → URL Configuration → add <code>https://YOUR-CLOUDFLARE-URL/auth/callback</code> to Redirect URLs.</li>
+          <li>Sign out, open /login, click &ldquo;Continue with Google&rdquo; — you should land on /dashboard signed in.</li>
+        </ol>
+      </section>
     </div>
   );
 }

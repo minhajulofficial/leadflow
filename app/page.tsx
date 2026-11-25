@@ -101,6 +101,13 @@ export default function Home() {
 
       <footer className="mx-auto max-w-6xl border-t px-5 py-8 text-sm" style={{ borderColor: "var(--line)" }}>
         <div className="flex flex-wrap items-center justify-between gap-3"><Logo size={26} /><p className="muted">© {new Date().getFullYear()} LeadFlow. Collect only public business data and follow each directory&apos;s terms.</p></div>
+        <nav className="mt-4 flex flex-wrap gap-x-5 gap-y-2" aria-label="Legal">
+          <Link href="/privacy">Privacy Policy</Link>
+          <Link href="/terms">Terms of Service</Link>
+          <Link href="/acceptable-use">Acceptable Use</Link>
+          <Link href="/refund">Refund Policy</Link>
+          <Link href="/dpa">Data Processing Addendum</Link>
+        </nav>
       </footer>
     </div>
   );

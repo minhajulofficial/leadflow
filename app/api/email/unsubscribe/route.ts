@@ -1,19 +1,23 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { verifyUnsubscribe } from "@/lib/email/unsubscribe";
+import { checkRateLimit, rateLimitKey, RATE_LIMITS } from "@/lib/rate-limit";
 
 /**
  * One-click unsubscribe (public link, no login). The signed token proves
  * this address asked to stop; the row is written with the server-only
- * service client because the visitor has no session.
+ * service client because the visitor has no session. Rate-limited per IP
+ * (10/min) — on limit the page asks to try again later.
  */
 export async function GET(req: Request) {
   const token = new URL(req.url).searchParams.get("token") ?? "";
   const v = await verifyUnsubscribe(token, process.env.ENCRYPTION_KEY);
-  const page = (title: string, text: string) =>
+  const page = (title: string, text: string, status = 200) =>
     new Response(
       `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${title}</title></head><body style="font-family:system-ui,sans-serif;max-width:560px;margin:10vh auto;padding:0 20px;text-align:center"><h1>${title}</h1><p>${text}</p><p><a href="/">Back to LeadFlow</a></p></body></html>`,
-      { headers: { "content-type": "text/html; charset=utf-8" } },
+      { status, headers: { "content-type": "text/html; charset=utf-8" } },
     );
+  const rl = checkRateLimit(rateLimitKey(req, "unsubscribe"), RATE_LIMITS.unsubscribe);
+  if (!rl.ok) return page("Try again later", "Too many unsubscribe attempts. Please wait a minute and try again.", 429);
   if (!v) return page("Link not valid", "This unsubscribe link is invalid or expired. Ask the sender to remove you, or contact LeadFlow support.");
   let db: any;
   try { db = createServiceClient(); }

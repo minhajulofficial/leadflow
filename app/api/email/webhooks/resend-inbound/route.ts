@@ -2,6 +2,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { extractReplyTargetIds, verifySvixSignature } from "@/lib/email/webhook";
 import { recordEvent } from "@/lib/email/events";
 import { json } from "@/lib/http";
+import { checkRateLimit, rateLimitKey, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 
 /**
  * Resend inbound email (public POST, no login) — reply detection.
@@ -26,6 +27,8 @@ function headerValue(headers: unknown, name: string): unknown {
 }
 
 export async function POST(req: Request) {
+  const rl = checkRateLimit(rateLimitKey(req, "webhook-inbound"), RATE_LIMITS.webhook);
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterMs);
   const raw = await req.text();
   const ok = await verifySvixSignature(raw, {
     id: req.headers.get("svix-id") ?? "",

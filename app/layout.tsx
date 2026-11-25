@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "@fontsource-variable/plus-jakarta-sans";
 import "@fortawesome/fontawesome-svg-core/styles.css";
 import "./globals.css";
+import ErrorReporter from "@/components/error-reporter";
 
 export const metadata: Metadata = {
   title: { default: "LeadFlow – find leads, send better emails", template: "%s · LeadFlow" },
@@ -17,7 +18,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body><ErrorReporter />{children}</body>
     </html>
   );
 }

@@ -11,6 +11,7 @@ import { signUnsubscribe } from "@/lib/email/unsubscribe";
 import { effectivePlan } from "@/lib/plan";
 import { isEmail } from "@/lib/leads";
 import { json } from "@/lib/http";
+import { checkRateLimit, rateLimitKey, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 
 /**
  * Queue worker — sends queued campaign emails. Runs with NO browser session.
@@ -173,6 +174,10 @@ async function finalizeCampaigns(db: any, campaignIds: string[]) {
 }
 
 export async function POST(req: Request) {
+  // Abuse cap (12/min per IP): the cron hits every 5 minutes and the
+  // "Process my queue now" button is a human click — anything faster is abuse.
+  const rl = checkRateLimit(rateLimitKey(req, "queue-process"), RATE_LIMITS.queueProcess);
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterMs);
   const origin = new URL(req.url).origin;
   const cronSecret = process.env.CRON_SECRET;
   const auth = req.headers.get("authorization") ?? "";

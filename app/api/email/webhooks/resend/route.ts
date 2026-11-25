@@ -2,6 +2,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { verifySvixSignature } from "@/lib/email/webhook";
 import { recordEvent } from "@/lib/email/events";
 import { json } from "@/lib/http";
+import { checkRateLimit, rateLimitKey, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 
 /**
  * Resend event webhook (public POST, no login). Resend signs every delivery
@@ -27,6 +28,8 @@ const TYPE_MAP: Record<string, { type: "delivered" | "bounced" | "complained" | 
 };
 
 export async function POST(req: Request) {
+  const rl = checkRateLimit(rateLimitKey(req, "webhook-resend"), RATE_LIMITS.webhook);
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterMs);
   const raw = await req.text();
   const ok = await verifySvixSignature(raw, {
     id: req.headers.get("svix-id") ?? "",

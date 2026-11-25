@@ -1,10 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import { validateEmail } from "@/lib/email/validate";
 import { json, sameOriginJson } from "@/lib/http";
+import { checkRateLimit, rateLimitKey, rateLimitResponse, RATE_LIMITS } from "@/lib/rate-limit";
 
 /** Check addresses before sending: syntax + MX records. Signed in only. */
 export async function POST(req: Request) {
   if (!sameOriginJson(req)) return json({ error: "Bad request." }, 403);
+  const rl = checkRateLimit(rateLimitKey(req, "validate"), RATE_LIMITS.validate);
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterMs);
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return json({ error: "Please sign in." }, 401);

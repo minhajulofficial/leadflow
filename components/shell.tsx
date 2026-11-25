@@ -12,6 +12,7 @@ const USER_ITEMS: NavItem[] = [
   { href: "/dashboard/email", label: "Email", icon: "mail" },
   { href: "/dashboard/integrations", label: "Integrations", icon: "plug" },
   { href: "/dashboard/billing", label: "Plan & billing", icon: "card" },
+  { href: "/dashboard/settings", label: "Settings", icon: "sliders" },
 ];
 const ADMIN_ITEMS: NavItem[] = [
   { href: "/admin", label: "Overview", icon: "chart", exact: true },
@@ -77,6 +78,15 @@ export default async function Shell({ children }: { children: React.ReactNode })
           </div>
         </header>
         <main className="mx-auto w-full max-w-[1120px] px-4 py-6 pb-28 lg:px-10 lg:py-10 lg:pb-10">{children}</main>
+        <footer className="mx-auto w-full max-w-[1120px] px-4 pb-28 text-sm lg:px-10 lg:pb-10">
+          <nav className="muted flex flex-wrap gap-x-5 gap-y-2 border-t pt-4" style={{ borderColor: "var(--line)" }} aria-label="Legal">
+            <Link href="/privacy">Privacy Policy</Link>
+            <Link href="/terms">Terms of Service</Link>
+            <Link href="/acceptable-use">Acceptable Use</Link>
+            <Link href="/refund">Refund Policy</Link>
+            <Link href="/dpa">Data Processing Addendum</Link>
+          </nav>
+        </footer>
       </div>
 
       <div className="fixed inset-x-0 bottom-0 z-30 border-t lg:hidden" style={{ background: "var(--card)", borderColor: "var(--line)", paddingBottom: "env(safe-area-inset-bottom)" }}>
