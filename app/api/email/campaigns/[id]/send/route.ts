@@ -3,6 +3,7 @@ import { decryptSecret } from "@/lib/crypto";
 import { resendMessage, sendResend } from "@/lib/email/resend";
 import { applyMerge } from "@/lib/email/merge";
 import { signUnsubscribe } from "@/lib/email/unsubscribe";
+import { validateEmailDomains } from "@/lib/email/validate";
 import { isEmail } from "@/lib/leads";
 import { json, sameOriginJson } from "@/lib/http";
 
@@ -84,10 +85,31 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (!pending) return json({ error: "No recipients left to send to." }, 400);
     if (usage && usage.lim != null && usage.sent_today + (pending ?? 0) > usage.lim)
       return json({ error: `Daily limit: you can send ${Math.max(0, usage.lim - usage.sent_today)} more today on your plan.` }, 400);
+    // MX pre-check: domains with definitely no mail server are skipped now,
+    // so they are never enqueued. A lookup failure ("unknown") never blocks.
+    let skippedInvalid = 0;
+    const { data: pendings } = await supabase.from("campaign_recipients")
+      .select("id, email").eq("campaign_id", id).eq("status", "pending").limit(5000);
+    if (pendings?.length) {
+      const mx = await validateEmailDomains(pendings.map((r: any) => r.email));
+      const bad = pendings.filter((r: any) => {
+        const d = String(r.email).toLowerCase().split("@").pop() ?? "";
+        return mx.get(d) === "none";
+      });
+      if (bad.length) {
+        skippedInvalid = bad.length;
+        for (const r of bad) {
+          await supabase.from("campaign_recipients").update({
+            status: "skipped",
+            last_error: `The domain ${String(r.email).split("@").pop()} has no mail server (no MX records).`,
+          }).eq("id", r.id);
+        }
+      }
+    }
     await supabase.from("campaigns").update({ status: "sending", updated_at: new Date().toISOString() }).eq("id", id);
     const { data, error } = await supabase.rpc("enqueue_campaign", { p_campaign: id });
     if (error) return json({ error: "Could not queue this campaign." }, 400);
-    return json({ ok: true, status: "sending", queued: data?.[0]?.queued ?? 0, skippedSuppressed: data?.[0]?.skipped_suppressed ?? 0 });
+    return json({ ok: true, status: "sending", queued: data?.[0]?.queued ?? 0, skippedSuppressed: data?.[0]?.skipped_suppressed ?? 0, skippedInvalid });
   }
 
   return json({ error: "Unknown action." }, 400);

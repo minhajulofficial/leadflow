@@ -38,6 +38,9 @@ export default async function Email() {
         <Link href="/dashboard/email/senders" className="btn"><Icon n="plug" /> Senders</Link>
         <Link href="/dashboard/email/templates" className="btn"><Icon n="save" /> Templates</Link>
         <Link href="/dashboard/email/suppression" className="btn"><Icon n="no" /> Suppression</Link>
+        <Link href="/dashboard/email/analytics" className="btn"><Icon n="chart" /> Analytics</Link>
+        <Link href="/dashboard/email/deliverability" className="btn"><Icon n="shield" /> Deliverability</Link>
+        <Link href="/dashboard/email/ai" className="btn"><Icon n="magic" /> AI writer</Link>
       </PageHead>
 
       <section className="panel flex flex-wrap items-center gap-4">

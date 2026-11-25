@@ -40,7 +40,7 @@
     "build": "vite build",
     "start": "vite preview",
     "deploy": "vinext-cloudflare deploy",
-    "test:db-new": "NO_DEFAULT_GRANTS=1 node tests/db-security.test.mjs && NO_DEFAULT_GRANTS=1 node tests/db-collect.test.mjs && NO_DEFAULT_GRANTS=1 node tests/db-backfill.test.mjs && NO_DEFAULT_GRANTS=1 node tests/db-email.test.mjs",
-    "test": "tsx tests/leads.test.ts && tsx tests/billing.test.ts && tsx tests/collect.test.ts && tsx tests/apify.test.ts && tsx tests/email-merge.test.ts && tsx tests/email-queue.test.ts && tsx tests/email-resend.test.ts && tsx tests/email-unsubscribe.test.ts && node tests/db-security.test.mjs && node tests/db-collect.test.mjs && node tests/db-backfill.test.mjs && node tests/db-email.test.mjs"
+    "test:db-new": "NO_DEFAULT_GRANTS=1 node tests/db-security.test.mjs && NO_DEFAULT_GRANTS=1 node tests/db-collect.test.mjs && NO_DEFAULT_GRANTS=1 node tests/db-backfill.test.mjs && NO_DEFAULT_GRANTS=1 node tests/db-email.test.mjs && NO_DEFAULT_GRANTS=1 node tests/db-tracking.test.mjs",
+    "test": "tsx tests/leads.test.ts && tsx tests/billing.test.ts && tsx tests/collect.test.ts && tsx tests/apify.test.ts && tsx tests/email-merge.test.ts && tsx tests/email-queue.test.ts && tsx tests/email-resend.test.ts && tsx tests/email-unsubscribe.test.ts && tsx tests/email-tracking.test.ts && tsx tests/email-validate.test.ts && tsx tests/email-ai-writer.test.ts && tsx tests/email-webhook.test.ts && node tests/db-security.test.mjs && node tests/db-collect.test.mjs && node tests/db-backfill.test.mjs && node tests/db-email.test.mjs && node tests/db-tracking.test.mjs"
   }
 }

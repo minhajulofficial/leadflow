@@ -24,6 +24,13 @@ export default function NewCampaignClient({ senders, templates, leads }: { sende
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [createdId, setCreatedId] = useState<string | null>(null);
+  const [aiAudience, setAiAudience] = useState("");
+  const [aiGoal, setAiGoal] = useState("");
+  const [aiTone, setAiTone] = useState<"friendly" | "formal" | "short">("friendly");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiHints, setAiHints] = useState<string[]>([]);
+  const [validResult, setValidResult] = useState<{ ok: number; bad: { email: string; reason?: string }[] } | null>(null);
+  const [validBusy, setValidBusy] = useState(false);
 
   const visible = useMemo(() => {
     const needle = q.trim().toLowerCase();
@@ -49,6 +56,45 @@ export default function NewCampaignClient({ senders, templates, leads }: { sende
   }
   function insertField(f: string) {
     setBody((b) => `${b}{{${f}}}`);
+  }
+
+  async function aiDraft() {
+    setAiBusy(true); setMsg(null); setAiHints([]);
+    const res = await fetch("/api/email/ai", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "draft", audience: aiAudience || undefined, goal: aiGoal || undefined, tone: aiTone }),
+    });
+    const j: any = await res.json().catch(() => ({}));
+    if (!res.ok) { setMsg({ ok: false, text: j.error ?? "AI draft failed." }); setAiBusy(false); return; }
+    setSubject(j.subject ?? ""); setBody(j.body ?? ""); setAiHints(j.hints ?? []);
+    setMsg({ ok: true, text: "AI draft ready — edit it before sending. AI helps with wording; inbox placement is never guaranteed." });
+    setAiBusy(false);
+  }
+
+  async function aiImprove() {
+    setAiBusy(true); setMsg(null); setAiHints([]);
+    const res = await fetch("/api/email/ai", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "improve", subject, body }),
+    });
+    const j: any = await res.json().catch(() => ({}));
+    if (!res.ok) { setMsg({ ok: false, text: j.error ?? "AI improve failed." }); setAiBusy(false); return; }
+    setSubject(j.subject ?? subject); setBody(j.body ?? body); setAiHints(j.hints ?? []);
+    setMsg({ ok: true, text: "Improved — review it before sending." });
+    setAiBusy(false);
+  }
+
+  async function checkAddresses() {
+    setValidBusy(true); setValidResult(null);
+    const res = await fetch("/api/email/validate", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ emails: [...selected].map((id) => leads.find((l) => l.id === id)?.email).filter(Boolean) }),
+    });
+    const j: any = await res.json().catch(() => ({}));
+    if (!res.ok) { setMsg({ ok: false, text: j.error ?? "Could not check addresses." }); setValidBusy(false); return; }
+    const bad = (j.results ?? []).filter((r: any) => !r.valid).map((r: any) => ({ email: r.email, reason: r.reason }));
+    setValidResult({ ok: (j.results ?? []).length - bad.length, bad });
+    setValidBusy(false);
   }
 
   async function create(draftOnly: boolean) {
@@ -94,8 +140,30 @@ export default function NewCampaignClient({ senders, templates, leads }: { sende
       </section>
 
       <section className="panel">
+        <h2 className="mb-1 font-bold">Write with AI <span className="muted font-normal">(optional)</span></h2>
+        <p className="muted mb-3 text-sm">Drafts or improves the email with your own Gemini / OpenAI key (connect it in <Link href="/dashboard/email/ai" className="font-bold underline">Email &gt; AI writer</Link>). AI helps with wording — inbox placement is never guaranteed.</p>
+        <div className="grid gap-3 md:grid-cols-3">
+          <div><label className="label" htmlFor="ai-aud">Audience</label><input id="ai-aud" className="field" placeholder="e.g. dentists in Dhaka" value={aiAudience} onChange={(e) => setAiAudience(e.target.value)} /></div>
+          <div><label className="label" htmlFor="ai-goal">Goal</label><input id="ai-goal" className="field" placeholder="e.g. offer a website redesign" value={aiGoal} onChange={(e) => setAiGoal(e.target.value)} /></div>
+          <div><label className="label" htmlFor="ai-tone">Tone</label>
+            <select id="ai-tone" className="field" value={aiTone} onChange={(e) => setAiTone(e.target.value as "friendly" | "formal" | "short")}>
+              <option value="friendly">Friendly</option><option value="formal">Formal</option><option value="short">Short</option>
+            </select></div>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <button className="btn btn-primary" disabled={aiBusy} onClick={aiDraft}><Icon n="magic" /> Draft with AI</button>
+          <button className="btn" disabled={aiBusy || (!subject.trim() && !body.trim())} onClick={aiImprove}><Icon n="refresh" /> Improve with AI</button>
+        </div>
+        {aiHints.length > 0 && <ul className="mt-3 space-y-1 text-sm">{aiHints.map((h) => <li key={h} className="alert alert-warn !mb-0"><Icon n="warn" /> {h}</li>)}</ul>}
+      </section>
+
+      <section className="panel">
         <h2 className="mb-1 font-bold">Recipients — {selected.size} selected</h2>
         <p className="muted mb-3 text-sm">Showing your newest {leads.length} leads with an email address. Use My leads to add more.</p>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <button className="btn" disabled={validBusy || !selected.size} onClick={checkAddresses}><Icon n="search" /> Check addresses</button>
+          {validResult && <span className="text-sm">{validResult.ok} valid · {validResult.bad.length} invalid{validResult.bad.length > 0 ? ` — ${validResult.bad.slice(0, 3).map((b) => `${b.email}${b.reason ? ` (${b.reason})` : ""}`).join(", ")}${validResult.bad.length > 3 ? "…" : ""}` : ""}</span>}
+        </div>
         <input className="field mb-3" aria-label="Filter recipients" placeholder="Filter by name, company, email or city…" value={q} onChange={(e) => setQ(e.target.value)} />
         <div className="mb-2 flex items-center gap-2"><button className="btn !px-3 !py-1" onClick={toggleAll}>{visible.every((l) => selected.has(l.id)) && visible.length ? "Deselect visible" : "Select visible"}</button><span className="muted text-sm">{visible.length} shown</span></div>
         <div className="max-h-80 space-y-1 overflow-y-auto pr-1">

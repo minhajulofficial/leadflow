@@ -153,3 +153,24 @@ filename does not exist; `0006_grants.sql` is the real file.)
    for a first test, `onboarding@resend.dev` works.
 5. Daily limits come from the plan (Free 20 / Pro 500 emails per day)
    and are enforced by the queue worker, not just the UI.
+
+## Tracking & intelligence (Phase 6)
+
+1. In Supabase > SQL Editor, run `supabase/migrations/0008_tracking.sql`
+   (after 0007). It adds the email event timeline, AI-provider keys, and
+   per-recipient open/click/bounce/reply timestamps.
+2. Set one more Cloudflare Secret: `RESEND_WEBHOOK_SECRET` — from Resend >
+   Settings > Webhooks, the signing secret for the webhook endpoints. Add
+   two endpoints in Resend, both with that secret:
+   - `https://YOUR-CLOUDFLARE-URL/api/email/webhooks/resend` — subscribe to
+     email.delivered, email.bounced, email.complained, email.opened,
+     email.clicked. Bounces and complaints suppress the address.
+   - `https://YOUR-CLOUDFLARE-URL/api/email/webhooks/resend-inbound` —
+     subscribe to email.received. This needs Resend Inbound enabled for the
+     sending domain (MX records point at Resend) — until then, replies are
+     recorded with the manual "Mark replied" button on a campaign.
+3. AI writer: each user connects their own Gemini (free tier) or OpenAI key
+   in Email > AI writer. The key is verified, then stored encrypted.
+4. Deliverability: Email > Deliverability checks SPF, DKIM and DMARC for a
+   domain over DNS. Analytics (Email > Analytics) shows open, click, reply
+   and bounce rates per campaign, sender and niche.

@@ -3,9 +3,13 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { decryptSecret } from "@/lib/crypto";
 import { resendMessage, sendResend } from "@/lib/email/resend";
 import { applyMerge } from "@/lib/email/merge";
+import { addTracking } from "@/lib/email/tracking";
+import { recordEvent } from "@/lib/email/events";
+import { validateEmailDomains, type MxResult } from "@/lib/email/validate";
 import { backoffMinutes, canSendToday, CRON_BATCH, MAX_ATTEMPTS, SEND_DELAY_MS, USER_BATCH } from "@/lib/email/queue";
 import { signUnsubscribe } from "@/lib/email/unsubscribe";
 import { effectivePlan } from "@/lib/plan";
+import { isEmail } from "@/lib/leads";
 import { json } from "@/lib/http";
 
 /**
@@ -33,6 +37,8 @@ type Ctx = {
   userId: string | null; // null in cron mode (all users)
   getKey: (senderId: string) => Promise<string | null>;
   origin: string;
+  mxCache: Map<string, MxResult>; // one MX lookup per domain per worker pass
+  keyB64: string | undefined;
 };
 
 const todayStart = () => new Date(new Date().toDateString()).toISOString();
@@ -84,24 +90,57 @@ async function processJob(ctx: Ctx, job: Job): Promise<string> {
     await db.from("email_queue").update({ status: "skipped", updated_at: new Date().toISOString() }).eq("id", job.id);
     return "skipped";
   }
+  // Validation safety net (the send action already MX-checked the batch):
+  // a bad address never gets sent. MX "unknown" (lookup failed) does NOT
+  // block — only a definite "no mail server" does.
+  if (!isEmail(String(rec.email))) {
+    await db.from("campaign_recipients").update({ status: "skipped", last_error: "Not a valid email address." }).eq("id", rec.id);
+    await db.from("email_queue").update({ status: "skipped", updated_at: new Date().toISOString() }).eq("id", job.id);
+    return "skipped";
+  }
+  const domain = String(rec.email).toLowerCase().split("@").pop() ?? "";
+  let mx = ctx.mxCache.get(domain);
+  if (mx === undefined) {
+    mx = (await validateEmailDomains([String(rec.email)])).get(domain) ?? "unknown";
+    ctx.mxCache.set(domain, mx);
+  }
+  if (mx === "none") {
+    await db.from("campaign_recipients").update({ status: "skipped", last_error: `The domain ${domain} has no mail server (no MX records).` }).eq("id", rec.id);
+    await db.from("email_queue").update({ status: "skipped", updated_at: new Date().toISOString() }).eq("id", job.id);
+    return "skipped";
+  }
   const apiKey = await ctx.getKey(sender.id);
   if (!apiKey) { await failJob(ctx, job, rec, "Could not read the sender key. Save it again in Email > Senders."); return "failed"; }
 
   const unsub = `${ctx.origin}/api/email/unsubscribe?token=${await signUnsubscribe(job.user_id, rec.email, process.env.ENCRYPTION_KEY)}`;
   const lead = { name: rec.name ?? "", company: rec.company ?? "", city: rec.city ?? "", country: rec.country ?? "", email: rec.email };
+  // Open/click tracking (unless the campaign opted out): bare URLs in the
+  // body become tracked links and a 1px pixel is appended. Test sends skip
+  // tracking (they have no recipient row).
+  let html = applyMerge(camp.body, lead, true);
+  if (camp.tracking_enabled !== false) {
+    html = await addTracking(html, rec.id, job.user_id, ctx.origin, ctx.keyB64);
+  }
   try {
-    await sendResend(apiKey, {
+    const sent = await sendResend(apiKey, {
       from: sender.from_name ? `${sender.from_name} <${sender.from_email}>` : sender.from_email,
       to: rec.email,
       subject: applyMerge(camp.subject, lead),
-      html: `${applyMerge(camp.body, lead, true)}<p style="color:#888;font-size:12px">You are receiving this because you are a business contact of a LeadFlow user. <a href="${unsub}">Unsubscribe</a></p>`,
+      html: `${html}<p style="color:#888;font-size:12px">You are receiving this because you are a business contact of a LeadFlow user. <a href="${unsub}">Unsubscribe</a></p>`,
       text: `${applyMerge(camp.body, lead)}\n\nUnsubscribe: ${unsub}`,
+    });
+    await db.from("campaign_recipients").update({
+      status: "sent", sent_at: new Date().toISOString(), attempts: (rec.attempts ?? 0) + 1,
+      resend_id: sent?.id ?? null,
+    }).eq("id", rec.id);
+    await recordEvent(db, {
+      recipientId: rec.id, campaignId: camp.id, userId: job.user_id, type: "sent",
+      meta: { resend_id: sent?.id ?? null },
     });
   } catch (e) {
     await failJob(ctx, job, rec, resendMessage(e));
     return "failed";
   }
-  await db.from("campaign_recipients").update({ status: "sent", sent_at: new Date().toISOString(), attempts: (rec.attempts ?? 0) + 1 }).eq("id", rec.id);
   await db.from("email_queue").update({ status: "sent", updated_at: new Date().toISOString() }).eq("id", job.id);
   await db.from("sender_accounts").update({ last_used_at: new Date().toISOString() }).eq("id", sender.id);
   return "sent";
@@ -174,6 +213,7 @@ export async function POST(req: Request) {
       .in("id", ids).eq("status", "queued").select("id, recipient_id, campaign_id, sender_id, user_id");
     const ctx: Ctx = {
       db, userId: null, origin,
+      mxCache: new Map(), keyB64: process.env.ENCRYPTION_KEY,
       getKey: async (senderId: string) => {
         const { data: s } = await db.from("sender_accounts").select("api_key_enc").eq("id", senderId).maybeSingle();
         if (!s?.api_key_enc) return null;
@@ -214,6 +254,7 @@ export async function POST(req: Request) {
   if (!jobs?.length) return json({ ...result, mode: "user" });
   const ctx: Ctx = {
     db: supabase, userId: user.id, origin,
+    mxCache: new Map(), keyB64: process.env.ENCRYPTION_KEY,
     getKey: async (senderId: string) => {
       const { data: enc } = await supabase.rpc("get_sender_key", { p_id: senderId });
       if (!enc) return null;
