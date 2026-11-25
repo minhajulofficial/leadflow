@@ -9,6 +9,7 @@ const USER_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: "home", exact: true },
   { href: "/dashboard/leads", label: "My leads", icon: "leads" },
   { href: "/dashboard/collect", label: "Collect leads", icon: "collect" },
+  { href: "/dashboard/email", label: "Email", icon: "mail" },
   { href: "/dashboard/integrations", label: "Integrations", icon: "plug" },
   { href: "/dashboard/billing", label: "Plan & billing", icon: "card" },
 ];
@@ -22,6 +23,7 @@ const TABS: NavItem[] = [
   { href: "/dashboard", label: "Home", icon: "home", exact: true },
   { href: "/dashboard/leads", label: "Leads", icon: "leads" },
   { href: "/dashboard/collect", label: "Collect", icon: "collect" },
+  { href: "/dashboard/email", label: "Email", icon: "mail" },
   { href: "/dashboard/billing", label: "Plan", icon: "card" },
 ];
 
@@ -39,7 +41,7 @@ export default async function Shell({ children }: { children: React.ReactNode })
     { items: USER_ITEMS.concat([{ href: "/dashboard/status", label: "Setup status", icon: "health" }]) },
     ...(isAdmin ? [{ label: "Admin", items: ADMIN_ITEMS }] : []),
   ];
-  const tabs = isAdmin ? [...TABS.slice(0, 3), { href: "/admin", label: "Admin", icon: "shield" as const }] : TABS;
+  const tabs = isAdmin ? [...TABS.slice(0, 4), { href: "/admin", label: "Admin", icon: "shield" as const }] : TABS;
 
   const SignOut = ({ label }: { label?: string }) => (
     <form action="/auth/signout" method="post">

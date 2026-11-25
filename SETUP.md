@@ -126,3 +126,30 @@ filename does not exist; `0006_grants.sql` is the real file.)
 2. Then set your role, as in step 6:
    `update public.profiles set role='admin' where email='YOUR@EMAIL';`
 3. Open `/admin` and scan the MFA QR.
+
+## Email sending (Phase 5)
+
+1. In Supabase > SQL Editor, run `supabase/migrations/0007_email.sql`
+   (after 0001–0006). It adds sender accounts, templates, campaigns,
+   recipients, the send queue and the suppression list, all with
+   Row Level Security (a user sees only their own rows).
+2. Set two more Cloudflare Secrets (Workers & Pages > leadflow >
+   Settings > Variables and Secrets):
+   - `SUPABASE_SERVICE_ROLE_KEY` — Supabase > Project Settings > API.
+     Used ONLY server-side by the queue worker (cron mode) and the
+     unsubscribe route. It never reaches the browser.
+   - `CRON_SECRET` — any long random string. The queue endpoint
+     (`POST /api/email/queue/process`) only accepts requests carrying
+     `Authorization: Bearer <CRON_SECRET>`.
+3. Background sending: add a trigger that POSTs to
+   `https://YOUR-CLOUDFLARE-URL/api/email/queue/process` with that
+   header every 5 minutes — Cloudflare Cron Triggers, an external cron
+   service, or Supabase pg_cron. Without a trigger, sending still works:
+   the "Process my queue now" button on a sending campaign processes
+   your own queued mail immediately.
+4. Each user connects Resend in Email > Senders (API key from
+   resend.com/api-keys; the key is verified against Resend, then stored
+   encrypted). The sender address must use a domain verified in Resend —
+   for a first test, `onboarding@resend.dev` works.
+5. Daily limits come from the plan (Free 20 / Pro 500 emails per day)
+   and are enforced by the queue worker, not just the UI.
